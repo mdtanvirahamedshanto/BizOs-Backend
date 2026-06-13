@@ -1,7 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
-import { redis } from '../../config/redis';
-import { env } from '../../env';
+import { redis } from '@/config/redis';
+import { env } from '@/env';
 
 /**
  * Global rate limiter using Redis sliding window.

@@ -1,7 +1,7 @@
 import type { JobsOptions } from 'bullmq';
-import { getQueue } from '../../config/bull';
+import { getQueue } from '@/config/bull';
 import type { QueueName } from './queueRegistry';
-import { logger } from '../../config/logger';
+import { logger } from '@/config/logger';
 
 /**
  * Queue service — the public API for enqueuing jobs.

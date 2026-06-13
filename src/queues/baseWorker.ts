@@ -1,6 +1,6 @@
 import { Worker, type Job, type WorkerOptions } from 'bullmq';
-import { bullConnection } from '../../config/bull';
-import { logger } from '../../config/logger';
+import { bullConnection } from '@/config/bull';
+import { logger } from '@/config/logger';
 
 /**
  * Abstract base worker class.
@@ -46,7 +46,7 @@ export abstract class BaseWorker<TData = unknown, TResult = unknown> {
         }
       },
       {
-        connection: bullConnection,
+        connection: bullConnection as any,
         concurrency: 5,
         ...options,
       },

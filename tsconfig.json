@@ -23,12 +23,10 @@
     "noUncheckedIndexedAccess": true,
     "baseUrl": ".",
     "paths": {
-      "@config/*": ["src/config/*"],
-      "@common/*": ["src/common/*"],
-      "@modules/*": ["src/modules/*"]
+      "@/*": ["src/*"]
     },
-    "typeRoots": ["node_modules/@types", "src/common/types"]
+    "typeRoots": ["node_modules/@types", "src/types"]
   },
-  "include": ["src/**/*.ts", "prisma/seed.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "tests"]
 }

@@ -1,73 +1,80 @@
-import { Queue, type ConnectionOptions } from 'bullmq';
-import { env } from '../env';
-import { QUEUE_NAMES } from '../common/queues/queueRegistry';
-import { logger } from './logger';
+import { Queue, Worker, QueueEvents } from 'bullmq';
+
+import type { QueueName } from '@/queues/queueRegistry';
+import { logger } from '@/config/logger';
+import { createRedisConnection } from './redis';
+
+const queues = new Map<QueueName, Queue>();
+const workers = new Map<QueueName, Worker>();
+const queueEvents = new Map<QueueName, QueueEvents>();
+
+export const bullConnection = createRedisConnection();
 
 /**
- * BullMQ shared connection configuration.
- * All queues and workers use this connection config.
+ * Get or initialize a BullMQ Queue.
  */
-export const bullConnection: ConnectionOptions = {
-  host: env.REDIS_HOST,
-  port: env.REDIS_PORT,
-  password: env.REDIS_PASSWORD || undefined,
-  db: env.REDIS_DB,
-};
-
-/**
- * Default queue options applied to all queues.
- */
-const defaultQueueOptions = {
-  defaultJobOptions: {
-    removeOnComplete: { count: 1000 }, // Keep last 1000 completed jobs
-    removeOnFail: { count: 5000 },     // Keep last 5000 failed jobs
-    attempts: 3,
-    backoff: {
-      type: 'exponential' as const,
-      delay: 2000, // Base delay: 2s → 4s → 8s
-    },
-  },
-};
-
-/**
- * Queue registry — lazily created queue instances.
- * Access queues via getQueue() helper.
- */
-const queues = new Map<string, Queue>();
-
-export function getQueue(name: string): Queue {
-  let queue = queues.get(name);
-  if (!queue) {
-    queue = new Queue(name, {
-      connection: bullConnection,
-      ...defaultQueueOptions,
-    });
+export function getQueue(name: QueueName): Queue {
+  if (!queues.has(name)) {
+    const queue = new Queue(name, { connection: bullConnection as any });
     queues.set(name, queue);
-    logger.debug({ queue: name }, 'BullMQ queue initialized');
+    logger.info({ queue: name }, 'Queue initialized');
   }
-  return queue;
+  return queues.get(name)!;
 }
 
 /**
- * Initialize all registered queues at startup.
- * This ensures queues exist before any jobs are enqueued.
+ * Register a worker for a queue.
  */
-export function initializeQueues(): void {
-  for (const queueName of Object.values(QUEUE_NAMES)) {
-    getQueue(queueName);
+export function registerWorker(
+  name: QueueName,
+  processor: (job: any) => Promise<any>,
+  concurrency = 5,
+): Worker {
+  if (workers.has(name)) {
+    logger.warn({ queue: name }, 'Worker already registered for queue');
+    return workers.get(name)!;
   }
-  logger.info(
-    { queueCount: Object.values(QUEUE_NAMES).length },
-    'All BullMQ queues initialized',
-  );
+
+  const worker = new Worker(name, processor, {
+    connection: bullConnection as any,
+    concurrency,
+  });
+
+  worker.on('completed', (job) => {
+    logger.debug({ queue: name, jobId: job.id }, 'Job completed successfully');
+  });
+
+  worker.on('failed', (job, err) => {
+    logger.error(
+      { queue: name, jobId: job?.id, error: err instanceof Error ? err.message : String(err) },
+      'Job failed',
+    );
+  });
+
+  workers.set(name, worker);
+  logger.info({ queue: name, concurrency }, 'Worker registered');
+
+  return worker;
 }
 
 /**
- * Gracefully close all queue connections.
+ * Gracefully close all queues and workers.
  */
-export async function closeQueues(): Promise<void> {
-  const closePromises = Array.from(queues.values()).map((q) => q.close());
-  await Promise.all(closePromises);
-  queues.clear();
-  logger.info('All BullMQ queues closed');
+export async function closeAllQueues(): Promise<void> {
+  const promises: Promise<void>[] = [];
+
+  for (const worker of workers.values()) {
+    promises.push(worker.close());
+  }
+
+  for (const queue of queues.values()) {
+    promises.push(queue.close());
+  }
+
+  for (const events of queueEvents.values()) {
+    promises.push(events.close());
+  }
+
+  await Promise.all(promises);
+  logger.info('All queues and workers closed gracefully');
 }

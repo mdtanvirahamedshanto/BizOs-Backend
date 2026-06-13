@@ -4,9 +4,8 @@ import { z } from 'zod';
 export const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  firstName: z.string().min(1, 'First name is required').max(100),
-  lastName: z.string().min(1, 'Last name is required').max(100),
-  tenantName: z.string().min(2, 'Company name must be at least 2 characters').max(200),
+  name: z.string().min(1, 'Name is required').max(200),
+  shopName: z.string().min(2, 'Shop name must be at least 2 characters').max(200),
 });
 
 /** Login with email and password */

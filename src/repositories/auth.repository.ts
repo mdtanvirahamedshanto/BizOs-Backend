@@ -1,19 +1,18 @@
 import type { PrismaClient } from '@prisma/client';
 
-/**
- * Auth repository.
- * Handles database operations for auth-related entities (users, refresh tokens).
- * No business logic — pure data access.
- */
 export class AuthRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async findUserByEmail(tenantId: string, email: string) {
+  async findUserByEmail(shopId: string, email: string) {
     return this.prisma.user.findUnique({
-      where: { tenantId_email: { tenantId, email } },
+      where: { uq_users_shop_email: { shopId, email } },
       include: {
-        roles: {
-          include: { role: true },
+        userRoles: {
+          include: {
+            role: {
+              include: { rolePermissions: { include: { permission: true } } },
+            },
+          },
         },
       },
     });
@@ -23,25 +22,32 @@ export class AuthRepository {
     return this.prisma.user.findUnique({
       where: { id },
       include: {
-        roles: {
-          include: { role: true },
+        userRoles: {
+          include: {
+            role: {
+              include: { rolePermissions: { include: { permission: true } } },
+            },
+          },
         },
       },
     });
   }
 
   async createUser(data: {
-    tenantId: string;
+    shopId: string;
     email: string;
     passwordHash: string;
-    firstName: string;
-    lastName: string;
+    name: string;
   }) {
     return this.prisma.user.create({
       data,
       include: {
-        roles: {
-          include: { role: true },
+        userRoles: {
+          include: {
+            role: {
+              include: { rolePermissions: { include: { permission: true } } },
+            },
+          },
         },
       },
     });
@@ -94,9 +100,9 @@ export class AuthRepository {
     });
   }
 
-  async findDefaultRole(tenantId: string, roleName: string) {
+  async findDefaultRole(shopId: string, roleName: string) {
     return this.prisma.role.findUnique({
-      where: { tenantId_name: { tenantId, name: roleName } },
+      where: { uq_roles_shop_name: { shopId, name: roleName } },
     });
   }
 }

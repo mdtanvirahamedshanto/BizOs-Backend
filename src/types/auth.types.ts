@@ -11,10 +11,9 @@ export interface AuthTokens {
 
 export interface AuthUser {
   id: string;
-  tenantId: string;
+  shopId: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   permissions: string[];
 }
 
@@ -25,7 +24,7 @@ export interface AuthResult {
 
 export interface JwtPayload {
   sub: string;        // userId
-  tenantId: string;
+  shopId: string;
   email: string;
   permissions: string[];
   iat: number;

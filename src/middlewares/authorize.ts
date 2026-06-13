@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ForbiddenError, UnauthorizedError } from '../errors';
+import { ForbiddenError, UnauthorizedError } from '@/utils/errors';
 
 /**
  * Authorization middleware factory.

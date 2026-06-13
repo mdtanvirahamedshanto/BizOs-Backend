@@ -3,19 +3,19 @@
  * Central registry of all events emitted across the BizOS system.
  *
  * Each event type has a strongly-typed payload interface.
- * Event names follow the format: "module.action" (e.g., "order.created")
+ * Event names follow the format: "module.action" (e.g., "sale.created")
  */
 
 // ─── Auth Events ─────────────────────────────────
 
 export interface UserRegisteredEvent {
-  tenantId: string;
+  shopId: string;
   userId: string;
   email: string;
 }
 
 export interface UserLoginEvent {
-  tenantId: string;
+  shopId: string;
   userId: string;
   email: string;
   ipAddress?: string;
@@ -23,41 +23,41 @@ export interface UserLoginEvent {
 }
 
 export interface UserLogoutEvent {
-  tenantId: string;
+  shopId: string;
   userId: string;
 }
 
-// ─── Tenant Events ───────────────────────────────
+// ─── Shop Events ───────────────────────────────
 
-export interface TenantCreatedEvent {
-  tenantId: string;
+export interface ShopCreatedEvent {
+  shopId: string;
   name: string;
   slug: string;
   plan: string;
 }
 
-export interface TenantUpdatedEvent {
-  tenantId: string;
+export interface ShopUpdatedEvent {
+  shopId: string;
   changes: Record<string, unknown>;
 }
 
 // ─── Inventory Events ────────────────────────────
 
 export interface ProductCreatedEvent {
-  tenantId: string;
+  shopId: string;
   productId: string;
   name: string;
   sku: string;
 }
 
 export interface ProductUpdatedEvent {
-  tenantId: string;
+  shopId: string;
   productId: string;
   changes: Record<string, unknown>;
 }
 
 export interface LowStockEvent {
-  tenantId: string;
+  shopId: string;
   productId: string;
   productName: string;
   sku: string;
@@ -67,81 +67,45 @@ export interface LowStockEvent {
 
 // ─── Sales Events ────────────────────────────────
 
-export interface OrderCreatedEvent {
-  tenantId: string;
-  orderId: string;
-  orderNumber: string;
+export interface SaleCreatedEvent {
+  shopId: string;
+  saleId: string;
+  invoiceNumber: string;
   customerId?: string;
   totalCents: number;
-  currency: string;
 }
 
-export interface OrderCompletedEvent {
-  tenantId: string;
-  orderId: string;
-  orderNumber: string;
-  totalCents: number;
-}
-
-export interface OrderCancelledEvent {
-  tenantId: string;
-  orderId: string;
-  orderNumber: string;
-  reason?: string;
-}
-
-// ─── Finance Events ──────────────────────────────
-
-export interface PaymentReceivedEvent {
-  tenantId: string;
-  paymentId: string;
-  orderId?: string;
-  amountCents: number;
-  currency: string;
-  method: string;
-}
-
-export interface InvoiceGeneratedEvent {
-  tenantId: string;
-  invoiceId: string;
+export interface SaleCompletedEvent {
+  shopId: string;
+  saleId: string;
   invoiceNumber: string;
-  orderId?: string;
   totalCents: number;
 }
 
-// ─── HR Events ───────────────────────────────────
+// ─── Purchase Events ──────────────────────────────
 
-export interface EmployeeOnboardedEvent {
-  tenantId: string;
-  employeeId: string;
-  employeeNumber: string;
-  firstName: string;
-  lastName: string;
+export interface PurchaseCreatedEvent {
+  shopId: string;
+  purchaseId: string;
+  referenceNumber: string;
+  supplierId?: string;
+  totalCents: number;
 }
 
-export interface PayrollProcessedEvent {
-  tenantId: string;
-  employeeId: string;
-  periodStart: string;
-  periodEnd: string;
-  netPayCents: number;
-}
+// ─── Khata Events ────────────────────────────────
 
-// ─── CRM Events ──────────────────────────────────
-
-export interface DealStageChangedEvent {
-  tenantId: string;
-  dealId: string;
-  title: string;
-  previousStage: string;
-  newStage: string;
-  valueCents?: number;
+export interface KhataEntryAddedEvent {
+  shopId: string;
+  khataAccountId: string;
+  entryId: string;
+  amountCents: number;
+  type: string;
 }
 
 // ─── Notification Events ─────────────────────────
 
 export interface NotificationRequestedEvent {
-  tenantId: string;
+  shopId: string;
   userId: string;
   type: string;
   title: string;
@@ -153,7 +117,7 @@ export interface NotificationRequestedEvent {
 // ─── Report Events ───────────────────────────────
 
 export interface ReportRequestedEvent {
-  tenantId: string;
+  shopId: string;
   userId: string;
   reportType: string;
   parameters: Record<string, unknown>;
@@ -168,9 +132,9 @@ export interface DomainEventMap {
   'user.login': UserLoginEvent;
   'user.logout': UserLogoutEvent;
 
-  // Tenant
-  'tenant.created': TenantCreatedEvent;
-  'tenant.updated': TenantUpdatedEvent;
+  // Shop
+  'shop.created': ShopCreatedEvent;
+  'shop.updated': ShopUpdatedEvent;
 
   // Inventory
   'product.created': ProductCreatedEvent;
@@ -178,20 +142,14 @@ export interface DomainEventMap {
   'inventory.lowStock': LowStockEvent;
 
   // Sales
-  'order.created': OrderCreatedEvent;
-  'order.completed': OrderCompletedEvent;
-  'order.cancelled': OrderCancelledEvent;
+  'sale.created': SaleCreatedEvent;
+  'sale.completed': SaleCompletedEvent;
 
-  // Finance
-  'payment.received': PaymentReceivedEvent;
-  'invoice.generated': InvoiceGeneratedEvent;
+  // Purchases
+  'purchase.created': PurchaseCreatedEvent;
 
-  // HR
-  'employee.onboarded': EmployeeOnboardedEvent;
-  'payroll.processed': PayrollProcessedEvent;
-
-  // CRM
-  'deal.stageChanged': DealStageChangedEvent;
+  // Khata
+  'khata.entryAdded': KhataEntryAddedEvent;
 
   // Notification
   'notification.requested': NotificationRequestedEvent;

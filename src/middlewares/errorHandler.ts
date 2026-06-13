@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import { AppError } from '../errors';
-import { logger } from '../../config/logger';
-import { env } from '../../env';
+import { AppError } from '@/utils/errors';
+import { logger } from '@/config/logger';
+import { env } from '@/env';
 
 /**
  * Global error handler middleware.

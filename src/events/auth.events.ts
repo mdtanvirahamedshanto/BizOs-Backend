@@ -1,9 +1,9 @@
-import { eventBus } from '../../common/events/eventBus';
+import { eventBus } from '@/events/eventBus';
 import type {
   UserRegisteredEvent,
   UserLoginEvent,
   UserLogoutEvent,
-} from '../../common/events/eventTypes';
+} from '@/events/eventTypes';
 
 /**
  * Auth module event publishers.

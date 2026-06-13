@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import type { DomainEventMap, DomainEventName } from './eventTypes';
-import { logger } from '../../config/logger';
+import { logger } from '@/config/logger';
 
 /**
  * Typed in-process event bus.
@@ -24,9 +24,19 @@ class EventBus {
    * All registered handlers are called synchronously.
    * Handler errors are caught and logged — they never break the emitting flow.
    */
-  emit<E extends DomainEventName>(event: E, payload: DomainEventMap[E]): void {
-    logger.debug({ event, tenantId: (payload as Record<string, unknown>).tenantId }, 'Event emitted');
-    this.emitter.emit(event, payload);
+  emit<K extends DomainEventName>(event: K, payload: DomainEventMap[K]): void {
+    try {
+      this.emitter.emit(event, payload);
+      logger.debug(
+        { event, payload: payload as unknown as Record<string, unknown> },
+        'Domain event emitted',
+      );
+    } catch (err) {
+      logger.error(
+        { event, payload: payload as unknown as Record<string, unknown>, error: err },
+        'Failed to emit domain event',
+      );
+    }
   }
 
   /**
@@ -43,7 +53,7 @@ class EventBus {
         await handler(payload);
       } catch (error) {
         logger.error(
-          { err: error, event, tenantId: (payload as Record<string, unknown>).tenantId },
+          { err: error, event, shopId: (payload as unknown as Record<string, unknown>).shopId },
           'Event handler error (non-fatal)',
         );
       }

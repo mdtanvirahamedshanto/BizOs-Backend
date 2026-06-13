@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { UnauthorizedError } from '../errors';
+import { UnauthorizedError } from '@/utils/errors';
 
 /**
  * Tenant context middleware.
