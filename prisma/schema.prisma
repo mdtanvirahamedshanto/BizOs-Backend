@@ -1,10 +1,13 @@
-// ============================================
-// BizOS — Unified Prisma Schema
-// ============================================
-// All modules share a single schema file.
-// Multi-tenancy: every business entity includes tenantId.
-// Soft delete: entities use deletedAt for logical deletion.
-// ============================================
+// ============================================================================
+// BizOS — Production-Grade Prisma Schema
+// ============================================================================
+// Multi-tenant SaaS for small businesses.
+//   • Tenant entity = Shop (shop_id on every business table)
+//   • Soft delete = deleted_at TIMESTAMPTZ on applicable tables
+//   • Money = stored in cents (integer) — never float
+//   • IDs = UUID v4
+//   • Immutable ledgers: stock_movements, payments, khata_entries, audit_logs
+// ============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -12,92 +15,24 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-// ─────────────────────────────────────────────
-// TENANT MODULE
-// ─────────────────────────────────────────────
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  ENUMS                                                                    ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
 
-model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  domain    String?  @unique
-  logo      String?
-  status    TenantStatus @default(ACTIVE)
-  plan      TenantPlan   @default(FREE)
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
-
-  // Relations
-  users        User[]
-  roles        Role[]
-  products     Product[]
-  categories   Category[]
-  customers    Customer[]
-  orders       Order[]
-  invoices     Invoice[]
-  payments     Payment[]
-  accounts     Account[]
-  journalEntries JournalEntry[]
-  employees    Employee[]
-  departments  Department[]
-  contacts     Contact[]
-  deals        Deal[]
-  notifications Notification[]
-  auditLogs    AuditLog[]
-
-  @@map("tenants")
-}
-
-enum TenantStatus {
+enum ShopStatus {
   ACTIVE
   SUSPENDED
   TRIAL
   CANCELLED
 }
 
-enum TenantPlan {
+enum ShopPlan {
   FREE
   STARTER
   PROFESSIONAL
   ENTERPRISE
-}
-
-// ─────────────────────────────────────────────
-// AUTH & USER MODULE
-// ─────────────────────────────────────────────
-
-model User {
-  id           String   @id @default(cuid())
-  tenantId     String   @map("tenant_id")
-  email        String
-  passwordHash String   @map("password_hash")
-  firstName    String   @map("first_name")
-  lastName     String   @map("last_name")
-  avatar       String?
-  phone        String?
-  status       UserStatus @default(ACTIVE)
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  lastLoginAt  DateTime?  @map("last_login_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-
-  // Relations
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  roles        UserRole[]
-  refreshTokens RefreshToken[]
-  auditLogs    AuditLog[]
-  notifications Notification[]
-  assignedDeals Deal[]   @relation("DealAssignee")
-
-  @@unique([tenantId, email])
-  @@index([tenantId])
-  @@map("users")
 }
 
 enum UserStatus {
@@ -107,639 +42,65 @@ enum UserStatus {
   SUSPENDED
 }
 
-model Role {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  description String?
-  permissions String[] // Array of permission strings: "module:resource:action"
-  isSystem    Boolean  @default(false) @map("is_system")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users       UserRole[]
-
-  @@unique([tenantId, name])
-  @@index([tenantId])
-  @@map("roles")
-}
-
-model UserRole {
-  id       String @id @default(cuid())
-  userId   String @map("user_id")
-  roleId   String @map("role_id")
-  assignedAt DateTime @default(now()) @map("assigned_at")
-
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, roleId])
-  @@map("user_roles")
-}
-
-model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  revokedAt DateTime? @map("revoked_at")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([token])
-  @@map("refresh_tokens")
-}
-
-// ─────────────────────────────────────────────
-// INVENTORY MODULE
-// ─────────────────────────────────────────────
-
-model Category {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  slug        String
-  description String?
-  parentId    String?  @map("parent_id")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  // Relations
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryHierarchy")
-  products    Product[]
-
-  @@unique([tenantId, slug])
-  @@index([tenantId])
-  @@map("categories")
-}
-
-model Product {
-  id            String   @id @default(cuid())
-  tenantId      String   @map("tenant_id")
-  categoryId    String?  @map("category_id")
-  name          String
-  slug          String
-  sku           String
-  description   String?
-  priceCents    Int      @map("price_cents") // Store in cents to avoid float issues
-  costCents     Int?     @map("cost_cents")
-  taxRate       Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 4)
-  stockQuantity Int      @default(0) @map("stock_quantity")
-  lowStockThreshold Int  @default(10) @map("low_stock_threshold")
-  unit          String   @default("pcs")
-  barcode       String?
-  images        String[] // Array of image URLs
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  deletedAt     DateTime? @map("deleted_at")
-
-  // Relations
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category      Category? @relation(fields: [categoryId], references: [id])
-  orderItems    OrderItem[]
-  stockMovements StockMovement[]
-
-  @@unique([tenantId, sku])
-  @@unique([tenantId, slug])
-  @@index([tenantId])
-  @@index([tenantId, categoryId])
-  @@map("products")
-}
-
-model StockMovement {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  productId   String   @map("product_id")
-  type        StockMovementType
-  quantity    Int
-  reference   String?  // e.g., order ID, adjustment reason
-  notes       String?
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  product     Product  @relation(fields: [productId], references: [id])
-
-  @@index([tenantId])
-  @@index([productId])
-  @@map("stock_movements")
-}
-
 enum StockMovementType {
   IN
   OUT
   ADJUSTMENT
   RETURN
+  DAMAGE
 }
 
-// ─────────────────────────────────────────────
-// SALES MODULE
-// ─────────────────────────────────────────────
-
-model Order {
-  id              String   @id @default(cuid())
-  tenantId        String   @map("tenant_id")
-  customerId      String?  @map("customer_id")
-  orderNumber     String   @map("order_number")
-  status          OrderStatus @default(DRAFT)
-  subtotalCents   Int      @map("subtotal_cents")
-  taxCents        Int      @default(0) @map("tax_cents")
-  discountCents   Int      @default(0) @map("discount_cents")
-  totalCents      Int      @map("total_cents")
-  currency        String   @default("USD")
-  notes           String?
-  shippingAddress Json?    @map("shipping_address")
-  billingAddress  Json?    @map("billing_address")
-  paidAt          DateTime? @map("paid_at")
-  fulfilledAt     DateTime? @map("fulfilled_at")
-  cancelledAt     DateTime? @map("cancelled_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  deletedAt       DateTime? @map("deleted_at")
-
-  // Relations
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer        Customer? @relation(fields: [customerId], references: [id])
-  items           OrderItem[]
-  invoices        Invoice[]
-  payments        Payment[]
-
-  @@unique([tenantId, orderNumber])
-  @@index([tenantId])
-  @@index([tenantId, status])
-  @@index([tenantId, customerId])
-  @@map("orders")
-}
-
-enum OrderStatus {
+enum SaleStatus {
   DRAFT
-  CONFIRMED
-  PROCESSING
-  FULFILLED
-  CANCELLED
-  REFUNDED
-}
-
-model OrderItem {
-  id          String   @id @default(cuid())
-  orderId     String   @map("order_id")
-  productId   String   @map("product_id")
-  productName String   @map("product_name") // Snapshot at time of order
-  sku         String   // Snapshot
-  quantity    Int
-  unitPriceCents Int   @map("unit_price_cents")
-  totalCents  Int      @map("total_cents")
-  taxCents    Int      @default(0) @map("tax_cents")
-
-  // Relations
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product     Product  @relation(fields: [productId], references: [id])
-
-  @@index([orderId])
-  @@map("order_items")
-}
-
-model Invoice {
-  id            String   @id @default(cuid())
-  tenantId      String   @map("tenant_id")
-  orderId       String?  @map("order_id")
-  invoiceNumber String   @map("invoice_number")
-  status        InvoiceStatus @default(DRAFT)
-  subtotalCents Int      @map("subtotal_cents")
-  taxCents      Int      @default(0) @map("tax_cents")
-  totalCents    Int      @map("total_cents")
-  currency      String   @default("USD")
-  dueDate       DateTime? @map("due_date")
-  paidAt        DateTime? @map("paid_at")
-  notes         String?
-  pdfUrl        String?  @map("pdf_url")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  order         Order?   @relation(fields: [orderId], references: [id])
-
-  @@unique([tenantId, invoiceNumber])
-  @@index([tenantId])
-  @@map("invoices")
-}
-
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  PAID
-  OVERDUE
-  CANCELLED
+  COMPLETED
+  RETURNED
   VOID
 }
 
-// ─────────────────────────────────────────────
-// FINANCE MODULE
-// ─────────────────────────────────────────────
-
-model Account {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  code        String   // Chart of accounts code
-  type        AccountType
-  description String?
-  isSystem    Boolean  @default(false) @map("is_system")
-  balance     Int      @default(0) // Balance in cents
-  currency    String   @default("USD")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  journalLines JournalLine[]
-
-  @@unique([tenantId, code])
-  @@index([tenantId])
-  @@map("accounts")
+enum PurchaseStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
 }
 
-enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  REVENUE
-  EXPENSE
+enum PaymentStatusEnum {
+  UNPAID
+  PARTIAL
+  PAID
+  OVERPAID
 }
 
-model Payment {
-  id            String   @id @default(cuid())
-  tenantId      String   @map("tenant_id")
-  orderId       String?  @map("order_id")
-  amountCents   Int      @map("amount_cents")
-  currency      String   @default("USD")
-  method        PaymentMethod
-  status        PaymentStatus @default(PENDING)
-  reference     String?  // External payment reference
-  gatewayId     String?  @map("gateway_id") // Payment gateway transaction ID
-  metadata      Json?
-  paidAt        DateTime? @map("paid_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  order         Order?   @relation(fields: [orderId], references: [id])
-
-  @@index([tenantId])
-  @@index([tenantId, orderId])
-  @@map("payments")
+enum PaymentType {
+  RECEIVED
+  MADE
 }
 
 enum PaymentMethod {
   CASH
+  BKASH
+  NAGAD
+  ROCKET
+  BANK
   CARD
-  BANK_TRANSFER
-  MOBILE_BANKING
   CHECK
   OTHER
 }
 
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
-  CANCELLED
+enum DiscountType {
+  PERCENTAGE
+  FIXED
 }
 
-model JournalEntry {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  entryNumber String   @map("entry_number")
-  date        DateTime
-  description String
-  reference   String?  // Link to order/payment/etc.
-  status      JournalStatus @default(DRAFT)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lines       JournalLine[]
-
-  @@unique([tenantId, entryNumber])
-  @@index([tenantId])
-  @@map("journal_entries")
+enum PartyType {
+  CUSTOMER
+  SUPPLIER
 }
 
-enum JournalStatus {
-  DRAFT
-  POSTED
-  VOID
-}
-
-model JournalLine {
-  id             String   @id @default(cuid())
-  journalEntryId String   @map("journal_entry_id")
-  accountId      String   @map("account_id")
-  debitCents     Int      @default(0) @map("debit_cents")
-  creditCents    Int      @default(0) @map("credit_cents")
-  description    String?
-
-  // Relations
-  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account        Account      @relation(fields: [accountId], references: [id])
-
-  @@index([journalEntryId])
-  @@map("journal_lines")
-}
-
-// ─────────────────────────────────────────────
-// HR MODULE
-// ─────────────────────────────────────────────
-
-model Department {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  description String?
-  managerId   String?  @map("manager_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employees   Employee[]
-
-  @@unique([tenantId, name])
-  @@index([tenantId])
-  @@map("departments")
-}
-
-model Employee {
-  id              String   @id @default(cuid())
-  tenantId        String   @map("tenant_id")
-  departmentId    String?  @map("department_id")
-  employeeNumber  String   @map("employee_number")
-  firstName       String   @map("first_name")
-  lastName        String   @map("last_name")
-  email           String
-  phone           String?
-  position        String?
-  status          EmployeeStatus @default(ACTIVE)
-  hireDate        DateTime @map("hire_date")
-  terminationDate DateTime? @map("termination_date")
-  salaryCents     Int?     @map("salary_cents")
-  salaryFrequency SalaryFrequency @default(MONTHLY) @map("salary_frequency")
-  bankDetails     Json?    @map("bank_details")
-  emergencyContact Json?   @map("emergency_contact")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  deletedAt       DateTime? @map("deleted_at")
-
-  // Relations
-  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department      Department? @relation(fields: [departmentId], references: [id])
-  payrolls        Payroll[]
-  leaveRequests   LeaveRequest[]
-
-  @@unique([tenantId, employeeNumber])
-  @@unique([tenantId, email])
-  @@index([tenantId])
-  @@map("employees")
-}
-
-enum EmployeeStatus {
-  ACTIVE
-  ON_LEAVE
-  TERMINATED
-  PROBATION
-}
-
-enum SalaryFrequency {
-  WEEKLY
-  BI_WEEKLY
-  MONTHLY
-  ANNUALLY
-}
-
-model Payroll {
-  id              String   @id @default(cuid())
-  tenantId        String   @map("tenant_id")
-  employeeId      String   @map("employee_id")
-  periodStart     DateTime @map("period_start")
-  periodEnd       DateTime @map("period_end")
-  baseSalaryCents Int      @map("base_salary_cents")
-  deductionsCents Int      @default(0) @map("deductions_cents")
-  bonusCents      Int      @default(0) @map("bonus_cents")
-  netPayCents     Int      @map("net_pay_cents")
-  status          PayrollStatus @default(PENDING)
-  paidAt          DateTime? @map("paid_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  employee        Employee @relation(fields: [employeeId], references: [id])
-
-  @@index([tenantId])
-  @@index([employeeId])
-  @@map("payrolls")
-}
-
-enum PayrollStatus {
-  PENDING
-  APPROVED
-  PAID
-  CANCELLED
-}
-
-model LeaveRequest {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  employeeId  String   @map("employee_id")
-  type        LeaveType
-  startDate   DateTime @map("start_date")
-  endDate     DateTime @map("end_date")
-  reason      String?
-  status      LeaveStatus @default(PENDING)
-  approvedBy  String?  @map("approved_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  employee    Employee @relation(fields: [employeeId], references: [id])
-
-  @@index([tenantId])
-  @@index([employeeId])
-  @@map("leave_requests")
-}
-
-enum LeaveType {
-  ANNUAL
-  SICK
-  PERSONAL
-  MATERNITY
-  PATERNITY
-  UNPAID
-}
-
-enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
-}
-
-// ─────────────────────────────────────────────
-// CRM MODULE
-// ─────────────────────────────────────────────
-
-model Customer {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  email       String?
-  phone       String?
-  company     String?
-  address     Json?
-  tags        String[]
-  notes       String?
-  totalSpentCents Int  @default(0) @map("total_spent_cents")
-  orderCount  Int      @default(0) @map("order_count")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orders      Order[]
-  contacts    Contact[]
-  deals       Deal[]
-
-  @@index([tenantId])
-  @@index([tenantId, email])
-  @@map("customers")
-}
-
-model Contact {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  customerId  String?  @map("customer_id")
-  firstName   String   @map("first_name")
-  lastName    String   @map("last_name")
-  email       String?
-  phone       String?
-  position    String?
-  isPrimary   Boolean  @default(false) @map("is_primary")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer    Customer? @relation(fields: [customerId], references: [id])
-
-  @@index([tenantId])
-  @@map("contacts")
-}
-
-model Deal {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  customerId  String?  @map("customer_id")
-  assigneeId  String?  @map("assignee_id")
-  title       String
-  valueCents  Int?     @map("value_cents")
-  currency    String   @default("USD")
-  stage       DealStage @default(LEAD)
-  probability Int      @default(0) // 0-100
-  expectedCloseDate DateTime? @map("expected_close_date")
-  closedAt    DateTime? @map("closed_at")
-  lostReason  String?  @map("lost_reason")
-  notes       String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer    Customer? @relation(fields: [customerId], references: [id])
-  assignee    User?    @relation("DealAssignee", fields: [assigneeId], references: [id])
-  activities  Activity[]
-
-  @@index([tenantId])
-  @@index([tenantId, stage])
-  @@map("deals")
-}
-
-enum DealStage {
-  LEAD
-  QUALIFIED
-  PROPOSAL
-  NEGOTIATION
-  WON
-  LOST
-}
-
-model Activity {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  dealId      String?  @map("deal_id")
-  type        ActivityType
-  title       String
-  description String?
-  dueDate     DateTime? @map("due_date")
-  completedAt DateTime? @map("completed_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  deal        Deal?    @relation(fields: [dealId], references: [id])
-
-  @@index([tenantId])
-  @@index([dealId])
-  @@map("activities")
-}
-
-enum ActivityType {
-  CALL
-  EMAIL
-  MEETING
-  TASK
-  NOTE
-}
-
-// ─────────────────────────────────────────────
-// NOTIFICATION MODULE
-// ─────────────────────────────────────────────
-
-model Notification {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  userId      String   @map("user_id")
-  type        String   // e.g., "order.created", "inventory.lowStock"
-  title       String
-  body        String
-  data        Json?    // Additional payload for the client
-  channel     NotificationChannel @default(IN_APP)
-  readAt      DateTime? @map("read_at")
-  sentAt      DateTime? @map("sent_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, userId])
-  @@index([tenantId, userId, readAt])
-  @@map("notifications")
+enum KhataEntryType {
+  CREDIT
+  DEBIT
+  ADJUSTMENT
 }
 
 enum NotificationChannel {
@@ -747,33 +108,770 @@ enum NotificationChannel {
   EMAIL
   SMS
   PUSH
+  TELEGRAM
 }
 
-// ─────────────────────────────────────────────
-// AUDIT MODULE
-// ─────────────────────────────────────────────
+enum TelegramMessageStatus {
+  PENDING
+  SENT
+  FAILED
+}
 
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  1. SHOPS — Multi-Tenant Root Entity                                      ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Shop {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String     @db.VarChar(200)
+  slug      String     @unique @db.VarChar(200)
+  phone     String?    @db.VarChar(20)
+  email     String?    @db.VarChar(255)
+  address   Json       @default("{}")
+  logo      String?
+  currency  String     @default("BDT") @db.VarChar(3)
+  timezone  String     @default("Asia/Dhaka") @db.VarChar(50)
+  status    ShopStatus @default(ACTIVE)
+  plan      ShopPlan   @default(FREE)
+  settings  Json       @default("{}")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime?  @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  users              User[]
+  roles              Role[]
+  categories         Category[]
+  products           Product[]
+  stockMovements     StockMovement[]
+  customers          Customer[]
+  suppliers          Supplier[]
+  sales              Sale[]
+  purchases          Purchase[]
+  payments           Payment[]
+  expenses           Expense[]
+  expenseCategories  ExpenseCategory[]
+  khataAccounts      KhataAccount[]
+  khataEntries       KhataEntry[]
+  notifications      Notification[]
+  telegramLinks      TelegramLink[]
+  telegramMessages   TelegramMessage[]
+  reportSnapshots    ReportSnapshot[]
+  auditLogs          AuditLog[]
+
+  @@map("shops")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  2. USERS                                                                 ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model User {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId          String     @map("shop_id") @db.Uuid
+  name            String     @db.VarChar(200)
+  email           String     @db.VarChar(255)
+  phone           String?    @db.VarChar(20)
+  passwordHash    String     @map("password_hash")
+  avatar          String?
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz
+  lastLoginAt     DateTime?  @map("last_login_at") @db.Timestamptz
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?  @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop             Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  userRoles        UserRole[]
+  refreshTokens    RefreshToken[]
+  salesAsCashier   Sale[]            @relation("SaleSoldBy")
+  purchasesAsBuyer Purchase[]        @relation("PurchaseBuyer")
+  expensesRecorded Expense[]         @relation("ExpenseRecorder")
+  paymentsRecorded Payment[]         @relation("PaymentRecorder")
+  stockMovements   StockMovement[]   @relation("StockMovementCreator")
+  khataEntries     KhataEntry[]      @relation("KhataEntryRecorder")
+  notifications    Notification[]
+  telegramLinks    TelegramLink[]
+  reportSnapshots  ReportSnapshot[]  @relation("ReportGenerator")
+  auditLogs        AuditLog[]
+
+  @@unique([shopId, email], map: "uq_users_shop_email")
+  @@index([shopId])
+  @@map("users")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  3. ROLES & PERMISSIONS (RBAC)                                            ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Role {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId      String   @map("shop_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop            Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([shopId, name], map: "uq_roles_shop_name")
+  @@index([shopId])
+  @@map("roles")
+}
+
+/// Global permission definitions — seeded at deployment, not shop-scoped.
+model Permission {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  module      String   @db.VarChar(50)
+  resource    String   @db.VarChar(50)
+  action      String   @db.VarChar(50)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // ── Relations ──
+  rolePermissions RolePermission[]
+
+  @@unique([module, resource, action], map: "uq_permissions_module_resource_action")
+  @@map("permissions")
+}
+
+model UserRole {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  // ── Relations ──
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId], map: "uq_user_roles_user_role")
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  // ── Relations ──
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId], map: "uq_role_permissions_role_perm")
+  @@map("role_permissions")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  4. REFRESH TOKENS                                                        ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // ── Relations ──
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  5. CATEGORIES — Hierarchical Product Categories                          ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Category {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId      String    @map("shop_id") @db.Uuid
+  name        String    @db.VarChar(200)
+  slug        String    @db.VarChar(200)
+  description String?
+  parentId    String?   @map("parent_id") @db.Uuid
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@unique([shopId, slug], map: "uq_categories_shop_slug")
+  @@index([shopId])
+  @@index([shopId, parentId])
+  @@map("categories")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  6. PRODUCTS — Product Catalog                                            ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Product {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId            String    @map("shop_id") @db.Uuid
+  categoryId        String?   @map("category_id") @db.Uuid
+  name              String    @db.VarChar(300)
+  slug              String    @db.VarChar(300)
+  sku               String    @db.VarChar(100)
+  barcode           String?   @db.VarChar(100)
+  description       String?
+  sellPriceCents    Int       @map("sell_price_cents")
+  costPriceCents    Int       @default(0) @map("cost_price_cents")
+  taxRate           Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)
+  unit              String    @default("pcs") @db.VarChar(20)
+  stockQuantity     Int       @default(0) @map("stock_quantity")
+  lowStockThreshold Int       @default(10) @map("low_stock_threshold")
+  images            String[]
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop           Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  category       Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  stockMovements StockMovement[]
+
+  @@unique([shopId, sku], map: "uq_products_shop_sku")
+  @@unique([shopId, slug], map: "uq_products_shop_slug")
+  @@index([shopId])
+  @@index([shopId, categoryId])
+  @@index([shopId, isActive])
+  @@index([shopId, barcode], map: "idx_products_shop_barcode")
+  @@map("products")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  7. STOCK MOVEMENTS — Inventory Ledger (Immutable)                        ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+/// Immutable audit trail of all stock changes. Never soft-deleted.
+model StockMovement {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId        String            @map("shop_id") @db.Uuid
+  productId     String            @map("product_id") @db.Uuid
+  type          StockMovementType
+  quantity      Int               // +ve = increase, -ve = decrease
+  unitCostCents Int?              @map("unit_cost_cents")
+  referenceType String?           @map("reference_type") @db.VarChar(50) // sale, purchase, adjustment
+  referenceId   String?           @map("reference_id") @db.Uuid
+  notes         String?
+  createdBy     String?           @map("created_by") @db.Uuid
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop    Shop    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  creator User?   @relation("StockMovementCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([shopId, productId])
+  @@index([shopId, createdAt])
+  @@index([referenceType, referenceId], map: "idx_stock_movements_ref")
+  @@map("stock_movements")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  8. CUSTOMERS                                                             ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Customer {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId              String    @map("shop_id") @db.Uuid
+  name                String    @db.VarChar(200)
+  phone               String?   @db.VarChar(20)
+  email               String?   @db.VarChar(255)
+  address             Json?
+  tags                String[]
+  notes               String?
+  totalPurchasesCents Int       @default(0) @map("total_purchases_cents")
+  totalOrders         Int       @default(0) @map("total_orders")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop          Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  sales         Sale[]
+  khataAccounts KhataAccount[] @relation("CustomerKhata")
+
+  @@index([shopId])
+  @@index([shopId, phone], map: "idx_customers_shop_phone")
+  @@index([shopId, name], map: "idx_customers_shop_name")
+  @@map("customers")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  9. SUPPLIERS                                                             ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Supplier {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId             String    @map("shop_id") @db.Uuid
+  name               String    @db.VarChar(200)
+  company            String?   @db.VarChar(200)
+  phone              String?   @db.VarChar(20)
+  email              String?   @db.VarChar(255)
+  address            Json?
+  paymentTerms       String?   @map("payment_terms") @db.VarChar(100)
+  notes              String?
+  totalSuppliedCents Int       @default(0) @map("total_supplied_cents")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop          Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  purchases     Purchase[]
+  khataAccounts KhataAccount[] @relation("SupplierKhata")
+
+  @@index([shopId])
+  @@index([shopId, phone], map: "idx_suppliers_shop_phone")
+  @@index([shopId, name], map: "idx_suppliers_shop_name")
+  @@map("suppliers")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  10. SALES                                                                ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Sale {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId        String            @map("shop_id") @db.Uuid
+  customerId    String?           @map("customer_id") @db.Uuid
+  soldBy        String            @map("sold_by") @db.Uuid
+  invoiceNumber String            @map("invoice_number") @db.VarChar(50)
+  status        SaleStatus        @default(COMPLETED)
+  subtotalCents Int               @map("subtotal_cents")
+  discountType  DiscountType?     @map("discount_type")
+  discountValue Int               @default(0) @map("discount_value")
+  discountCents Int               @default(0) @map("discount_cents")
+  taxCents      Int               @default(0) @map("tax_cents")
+  totalCents    Int               @map("total_cents")
+  paidCents     Int               @default(0) @map("paid_cents")
+  dueCents      Int               @default(0) @map("due_cents")
+  paymentStatus PaymentStatusEnum @default(UNPAID) @map("payment_status")
+  notes         String?
+  saleDate      DateTime          @default(now()) @map("sale_date") @db.Timestamptz
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime?         @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  cashier  User       @relation("SaleSoldBy", fields: [soldBy], references: [id], onDelete: Restrict)
+  items    SaleItem[]
+  payments Payment[]  @relation("SalePayments")
+
+  @@unique([shopId, invoiceNumber], map: "uq_sales_shop_invoice")
+  @@index([shopId, saleDate])
+  @@index([shopId, customerId])
+  @@index([shopId, status])
+  @@index([shopId, paymentStatus])
+  @@index([shopId, soldBy])
+  @@map("sales")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  11. SALE ITEMS — Line Items                                              ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model SaleItem {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saleId         String @map("sale_id") @db.Uuid
+  productId      String @map("product_id") @db.Uuid
+  productName    String @map("product_name") @db.VarChar(300)
+  sku            String @db.VarChar(100)
+  quantity       Int    // CHECK > 0 enforced at app layer
+  unitPriceCents Int    @map("unit_price_cents")
+  discountCents  Int    @default(0) @map("discount_cents")
+  taxCents       Int    @default(0) @map("tax_cents")
+  totalCents     Int    @map("total_cents")
+
+  // ── Relations ──
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  12. PURCHASES — Purchase Orders from Suppliers                           ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Purchase {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId          String            @map("shop_id") @db.Uuid
+  supplierId      String?           @map("supplier_id") @db.Uuid
+  purchasedBy     String            @map("purchased_by") @db.Uuid
+  referenceNumber String            @map("reference_number") @db.VarChar(50)
+  status          PurchaseStatus    @default(RECEIVED)
+  subtotalCents   Int               @map("subtotal_cents")
+  taxCents        Int               @default(0) @map("tax_cents")
+  discountCents   Int               @default(0) @map("discount_cents")
+  totalCents      Int               @map("total_cents")
+  paidCents       Int               @default(0) @map("paid_cents")
+  dueCents        Int               @default(0) @map("due_cents")
+  paymentStatus   PaymentStatusEnum @default(UNPAID) @map("payment_status")
+  notes           String?
+  purchaseDate    DateTime          @default(now()) @map("purchase_date") @db.Timestamptz
+  expectedDate    DateTime?         @map("expected_date") @db.Timestamptz
+  receivedDate    DateTime?         @map("received_date") @db.Timestamptz
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?         @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  supplier Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  buyer    User           @relation("PurchaseBuyer", fields: [purchasedBy], references: [id], onDelete: Restrict)
+  items    PurchaseItem[]
+  payments Payment[]      @relation("PurchasePayments")
+
+  @@unique([shopId, referenceNumber], map: "uq_purchases_shop_ref")
+  @@index([shopId, purchaseDate])
+  @@index([shopId, supplierId])
+  @@index([shopId, status])
+  @@index([shopId, paymentStatus])
+  @@map("purchases")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  13. PURCHASE ITEMS — Line Items                                          ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model PurchaseItem {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId    String @map("purchase_id") @db.Uuid
+  productId     String @map("product_id") @db.Uuid
+  productName   String @map("product_name") @db.VarChar(300)
+  sku           String @db.VarChar(100)
+  quantity      Int    // CHECK > 0 enforced at app layer
+  unitCostCents Int    @map("unit_cost_cents")
+  totalCents    Int    @map("total_cents")
+
+  // ── Relations ──
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@map("purchase_items")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  14. PAYMENTS — Unified Payment Ledger (Immutable)                        ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+/// Polymorphic payment table: links to sales, purchases, expenses, or khata
+/// via (payable_type, payable_id). Never soft-deleted.
+model Payment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId      String        @map("shop_id") @db.Uuid
+  type        PaymentType
+  method      PaymentMethod
+  amountCents Int           @map("amount_cents") // CHECK > 0 at app layer
+  payableType String        @map("payable_type") @db.VarChar(50) // sale, purchase, expense, khata
+  payableId   String        @map("payable_id") @db.Uuid
+  reference   String?       @db.VarChar(200) // bKash TxID, bank ref, etc.
+  notes       String?
+  paidAt      DateTime      @default(now()) @map("paid_at") @db.Timestamptz
+  recordedBy  String        @map("recorded_by") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations (explicit FK for known types) ──
+  shop     Shop  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  recorder User  @relation("PaymentRecorder", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  // Explicit optional FKs for the two most common payable types.
+  // These enable Prisma relation queries; the polymorphic fields above
+  // remain the canonical link for all types.
+  saleId     String?   @map("sale_id") @db.Uuid
+  purchaseId String?   @map("purchase_id") @db.Uuid
+  sale       Sale?     @relation("SalePayments", fields: [saleId], references: [id], onDelete: SetNull)
+  purchase   Purchase? @relation("PurchasePayments", fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, paidAt])
+  @@index([shopId, payableType, payableId], map: "idx_payments_shop_payable")
+  @@index([shopId, method])
+  @@index([shopId, type])
+  @@index([saleId])
+  @@index([purchaseId])
+  @@map("payments")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  15. EXPENSE CATEGORIES                                                   ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model ExpenseCategory {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId    String    @map("shop_id") @db.Uuid
+  name      String    @db.VarChar(100)
+  color     String?   @db.VarChar(7) // Hex: #FF5722
+  icon      String?   @db.VarChar(50)
+  isSystem  Boolean   @default(false) @map("is_system")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@unique([shopId, name], map: "uq_expense_categories_shop_name")
+  @@map("expense_categories")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  16. EXPENSES                                                             ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Expense {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId        String         @map("shop_id") @db.Uuid
+  categoryId    String?        @map("category_id") @db.Uuid
+  title         String         @db.VarChar(300)
+  description   String?
+  amountCents   Int            @map("amount_cents") // CHECK > 0
+  paymentMethod PaymentMethod? @map("payment_method")
+  receiptUrl    String?        @map("receipt_url")
+  expenseDate   DateTime       @default(now()) @map("expense_date") @db.Timestamptz
+  recordedBy    String         @map("recorded_by") @db.Uuid
+  isRecurring   Boolean        @default(false) @map("is_recurring")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime?      @map("deleted_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recorder User             @relation("ExpenseRecorder", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@index([shopId, expenseDate])
+  @@index([shopId, categoryId])
+  @@index([shopId, isRecurring])
+  @@map("expenses")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  17. KHATA ACCOUNTS — Credit/Debit Ledger                                 ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+/// Khata (খাতা) — South Asian credit ledger system.
+/// Balance semantics:
+///   +ve = party owes the shop (receivable)
+///   -ve = shop owes the party (payable)
+model KhataAccount {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId           String    @map("shop_id") @db.Uuid
+  partyType        PartyType @map("party_type")
+  partyId          String    @map("party_id") @db.Uuid
+  balanceCents     Int       @default(0) @map("balance_cents")
+  creditLimitCents Int       @default(0) @map("credit_limit_cents")
+  isActive         Boolean   @default(true) @map("is_active")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  entries  KhataEntry[]
+
+  // Polymorphic party: link to Customer or Supplier based on partyType
+  customer Customer? @relation("CustomerKhata", fields: [partyId], references: [id], map: "fk_khata_customer")
+  supplier Supplier? @relation("SupplierKhata", fields: [partyId], references: [id], map: "fk_khata_supplier")
+
+  @@unique([shopId, partyType, partyId], map: "uq_khata_accounts_shop_party")
+  @@index([shopId, balanceCents], map: "idx_khata_accounts_balance")
+  @@map("khata_accounts")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  18. KHATA ENTRIES — Individual Ledger Transactions (Immutable)            ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+/// Immutable financial ledger — never deleted.
+model KhataEntry {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId              String         @map("shop_id") @db.Uuid
+  khataAccountId      String         @map("khata_account_id") @db.Uuid
+  type                KhataEntryType
+  amountCents         Int            @map("amount_cents") // Always positive
+  runningBalanceCents Int            @map("running_balance_cents")
+  description         String
+  referenceType       String?        @map("reference_type") @db.VarChar(50) // sale, purchase, payment
+  referenceId         String?        @map("reference_id") @db.Uuid
+  recordedBy          String         @map("recorded_by") @db.Uuid
+  entryDate           DateTime       @default(now()) @map("entry_date") @db.Timestamptz
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop         Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  khataAccount KhataAccount @relation(fields: [khataAccountId], references: [id], onDelete: Restrict)
+  recorder     User         @relation("KhataEntryRecorder", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@index([shopId, khataAccountId, entryDate])
+  @@index([shopId, entryDate])
+  @@index([referenceType, referenceId], map: "idx_khata_entries_ref")
+  @@map("khata_entries")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  19. NOTIFICATIONS                                                        ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model Notification {
+  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId    String              @map("shop_id") @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  type      String              @db.VarChar(100) // sale.created, inventory.low_stock
+  title     String              @db.VarChar(300)
+  body      String
+  data      Json?
+  channel   NotificationChannel @default(IN_APP)
+  readAt    DateTime?           @map("read_at") @db.Timestamptz
+  sentAt    DateTime?           @map("sent_at") @db.Timestamptz
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, userId, readAt])
+  @@index([shopId, userId, createdAt])
+  @@index([shopId, type])
+  @@map("notifications")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  20. TELEGRAM — Bot Integration                                           ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model TelegramLink {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId           String    @map("shop_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  telegramChatId   BigInt    @map("telegram_chat_id")
+  telegramUsername String?   @map("telegram_username") @db.VarChar(100)
+  isActive         Boolean   @default(true) @map("is_active")
+  linkedAt         DateTime  @default(now()) @map("linked_at") @db.Timestamptz
+  unlinkedAt       DateTime? @map("unlinked_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop                    Shop                       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationPreferences TelegramNotificationPref[]
+  messages                TelegramMessage[]
+
+  @@unique([shopId, userId], map: "uq_telegram_links_shop_user")
+  @@unique([telegramChatId], map: "uq_telegram_links_chat_id")
+  @@map("telegram_links")
+}
+
+model TelegramNotificationPref {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  telegramLinkId String  @map("telegram_link_id") @db.Uuid
+  eventType      String  @map("event_type") @db.VarChar(100) // sale.created, inventory.low_stock
+  isEnabled      Boolean @default(true) @map("is_enabled")
+
+  // ── Relations ──
+  telegramLink TelegramLink @relation(fields: [telegramLinkId], references: [id], onDelete: Cascade)
+
+  @@unique([telegramLinkId, eventType], map: "uq_telegram_prefs_link_event")
+  @@map("telegram_notification_prefs")
+}
+
+model TelegramMessage {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId            String                @map("shop_id") @db.Uuid
+  telegramLinkId    String                @map("telegram_link_id") @db.Uuid
+  chatId            BigInt                @map("chat_id")
+  messageText       String                @map("message_text")
+  telegramMessageId BigInt?               @map("telegram_message_id")
+  status            TelegramMessageStatus @default(PENDING)
+  error             String?
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  sentAt            DateTime?             @map("sent_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop         Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  telegramLink TelegramLink @relation(fields: [telegramLinkId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
+  @@index([status])
+  @@map("telegram_messages")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  21. REPORT SNAPSHOTS — Pre-Computed Reports                              ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+model ReportSnapshot {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId      String   @map("shop_id") @db.Uuid
+  reportType  String   @map("report_type") @db.VarChar(50) // daily_summary, monthly_pnl
+  periodStart DateTime @map("period_start") @db.Date
+  periodEnd   DateTime @map("period_end") @db.Date
+  data        Json
+  generatedBy String?  @map("generated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop      Shop  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  generator User? @relation("ReportGenerator", fields: [generatedBy], references: [id], onDelete: SetNull)
+
+  @@unique([shopId, reportType, periodStart, periodEnd], map: "uq_report_snapshots_shop_type_period")
+  @@index([shopId, reportType])
+  @@map("report_snapshots")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  22. AUDIT LOGS — System Audit Trail (Immutable)                          ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+/// Immutable, append-only audit trail. Never deleted.
+/// Consider partitioning by created_at at scale.
 model AuditLog {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  userId      String?  @map("user_id")
-  action      String   // e.g., "order.created", "user.login"
-  entity      String?  // e.g., "Order", "Product"
-  entityId    String?  @map("entity_id")
-  oldValues   Json?    @map("old_values")
-  newValues   Json?    @map("new_values")
-  ipAddress   String?  @map("ip_address")
-  userAgent   String?  @map("user_agent")
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId    String   @map("shop_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String   @db.VarChar(100) // sale.created, product.updated
+  entity    String?  @db.VarChar(50) // Table name: sales, products
+  entityId  String?  @map("entity_id") @db.Uuid
+  oldValues Json?    @map("old_values")
+  newValues Json?    @map("new_values")
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  // Relations
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user        User?    @relation(fields: [userId], references: [id])
+  // ── Relations ──
+  shop Shop  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId])
-  @@index([tenantId, action])
-  @@index([tenantId, entity, entityId])
+  @@index([shopId, createdAt])
+  @@index([shopId, action])
+  @@index([shopId, entity, entityId], map: "idx_audit_logs_entity")
   @@index([createdAt])
   @@map("audit_logs")
 }
