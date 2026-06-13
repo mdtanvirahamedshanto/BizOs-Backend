@@ -9,25 +9,12 @@ async function main() {
   // 1. Seed Global Permissions
   console.log('  Seeding global permissions...');
   const permissionsData = [
-    { module: 'auth', resource: 'user', action: 'create', description: 'Create users' },
-    { module: 'auth', resource: 'user', action: 'read', description: 'Read users' },
-    { module: 'auth', resource: 'user', action: 'update', description: 'Update users' },
-    { module: 'auth', resource: 'user', action: 'delete', description: 'Delete users' },
-
-    { module: 'sales', resource: 'sale', action: 'create', description: 'Create sales' },
-    { module: 'sales', resource: 'sale', action: 'read', description: 'Read sales' },
-    { module: 'sales', resource: 'sale', action: 'update', description: 'Update sales' },
-    { module: 'sales', resource: 'sale', action: 'delete', description: 'Delete/void sales' },
-
-    { module: 'inventory', resource: 'product', action: 'create', description: 'Create products' },
-    { module: 'inventory', resource: 'product', action: 'read', description: 'Read products' },
-    { module: 'inventory', resource: 'product', action: 'update', description: 'Update products' },
-    { module: 'inventory', resource: 'product', action: 'delete', description: 'Delete products' },
-
-    { module: 'khata', resource: 'account', action: 'create', description: 'Create khata accounts' },
-    { module: 'khata', resource: 'account', action: 'read', description: 'Read khata accounts' },
-    { module: 'khata', resource: 'entry', action: 'create', description: 'Create khata entries' },
-    { module: 'khata', resource: 'entry', action: 'read', description: 'Read khata entries' },
+    { module: 'crm', resource: 'customers', action: 'create', description: 'Create customers' },
+    { module: 'crm', resource: 'customers', action: 'read', description: 'Read customers' },
+    { module: 'inventory', resource: 'products', action: 'create', description: 'Create products' },
+    { module: 'inventory', resource: 'products', action: 'read', description: 'Read products' },
+    { module: 'sales', resource: 'sales', action: 'create', description: 'Create sales' },
+    { module: 'sales', resource: 'sales', action: 'read', description: 'Read sales' },
   ];
 
   const seededPermissions = [];
@@ -70,11 +57,10 @@ async function main() {
   // 3. Seed Default Roles for the Demo Shop
   console.log('  Seeding default roles for demo shop...');
   const defaultRoles = [
-    { name: 'Owner', description: 'Full access to all resources', isSystem: true },
-    { name: 'Admin', description: 'Administrative access', isSystem: true },
-    { name: 'Manager', description: 'Managerial access', isSystem: true },
-    { name: 'Cashier', description: 'Billing and cashier access', isSystem: true },
-    { name: 'Viewer', description: 'Read-only store viewer', isSystem: true },
+    { name: 'SuperAdmin', description: 'Super administrator access', isSystem: true },
+    { name: 'Owner', description: 'Full shop owner access', isSystem: true },
+    { name: 'Manager', description: 'Shop manager access', isSystem: true },
+    { name: 'Staff', description: 'Store staff access', isSystem: true },
   ];
 
   const seededRoles = [];
@@ -99,59 +85,44 @@ async function main() {
   console.log(`  ✓ Seeded roles: ${seededRoles.map((r) => r.name).join(', ')}`);
 
   // Map permissions to non-Owner roles for demonstration purposes
-  const adminRole = seededRoles.find((r) => r.name === 'Admin')!;
   const managerRole = seededRoles.find((r) => r.name === 'Manager')!;
-  const cashierRole = seededRoles.find((r) => r.name === 'Cashier')!;
+  const staffRole = seededRoles.find((r) => r.name === 'Staff')!;
 
   console.log('  Mapping role permissions...');
-  // Admin gets all permissions
   for (const perm of seededPermissions) {
+    const permString = `${perm.resource}.${perm.action}`;
+
+    // Manager gets all permissions
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
-          roleId: adminRole.id,
+          roleId: managerRole.id,
           permissionId: perm.id,
         },
       },
       update: {},
       create: {
-        roleId: adminRole.id,
+        roleId: managerRole.id,
         permissionId: perm.id,
       },
     });
 
-    // Manager gets read/create
-    if (perm.action === 'read' || perm.action === 'create') {
-      await prisma.rolePermission.upsert({
-        where: {
-          roleId_permissionId: {
-            roleId: managerRole.id,
-            permissionId: perm.id,
-          },
-        },
-        update: {},
-        create: {
-          roleId: managerRole.id,
-          permissionId: perm.id,
-        },
-      });
-    }
-
-    // Cashier gets product read and sales create/read
+    // Staff gets products.read, sales.read, sales.create
     if (
-      (perm.resource === 'product' && perm.action === 'read') ||
-      (perm.resource === 'sale' && (perm.action === 'read' || perm.action === 'create'))
+      permString === 'products.read' ||
+      permString === 'sales.read' ||
+      permString === 'sales.create'
     ) {
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
-            roleId: cashierRole.id,
+            roleId: staffRole.id,
             permissionId: perm.id,
           },
         },
         update: {},
         create: {
-          roleId: cashierRole.id,
+          roleId: staffRole.id,
           permissionId: perm.id,
         },
       });

@@ -86,11 +86,10 @@ export class AuthRepository {
 
       // 2. Seed default roles for this shop
       const systemRoles = [
-        { name: 'Owner', description: 'Full access to all resources', isSystem: true },
-        { name: 'Admin', description: 'Administrative access', isSystem: true },
-        { name: 'Manager', description: 'Manager access', isSystem: true },
-        { name: 'Cashier', description: 'Cashier access', isSystem: true },
-        { name: 'Viewer', description: 'Read-only access', isSystem: true },
+        { name: 'SuperAdmin', description: 'Super administrator access', isSystem: true },
+        { name: 'Owner', description: 'Full shop owner access', isSystem: true },
+        { name: 'Manager', description: 'Shop manager access', isSystem: true },
+        { name: 'Staff', description: 'Store staff access', isSystem: true },
       ];
 
       const roles = await Promise.all(

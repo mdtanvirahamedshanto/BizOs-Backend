@@ -6,12 +6,13 @@ import { ForbiddenError, UnauthorizedError } from '@/utils/errors';
  * Creates a middleware that checks if the authenticated user has
  * the required permission(s) based on the RBAC model.
  *
- * Permission format: "module:resource:action"
- * Wildcard support: "finance:*:*" matches any finance permission
+ * Permission format: "resource.action" (e.g., "products.create")
+ * Wildcard support:
+ *   "*" matches any permission (SuperAdmin / Owner)
+ *   "products.*" matches any action on products
  *
  * Usage:
- *   router.get('/products', authenticate, authorize('inventory:product:read'), controller.list);
- *   router.delete('/products/:id', authenticate, authorize('inventory:product:delete'), controller.delete);
+ *   router.post('/products', authenticate, authorize('products.create'), controller.create);
  */
 export function authorize(...requiredPermissions: string[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
@@ -40,27 +41,25 @@ export function authorize(...requiredPermissions: string[]) {
 }
 
 /**
- * Check if a granted permission matches a required permission.
- * Supports wildcard (*) at each segment level.
+ * Check if a granted permission matches a required permission using dot-separation.
  *
  * Examples:
- *   matchPermission('*:*:*', 'inventory:product:read')  → true (super admin)
- *   matchPermission('inventory:*:*', 'inventory:product:read') → true
- *   matchPermission('inventory:product:read', 'inventory:product:read') → true
- *   matchPermission('inventory:product:read', 'inventory:product:delete') → false
+ *   matchPermission('*', 'products.create')          → true (SuperAdmin / Owner)
+ *   matchPermission('products.*', 'products.create')  → true
+ *   matchPermission('products.create', 'products.create') → true
+ *   matchPermission('products.create', 'products.delete') → false
  */
 function matchPermission(granted: string, required: string): boolean {
-  const grantedParts = granted.split(':');
-  const requiredParts = required.split(':');
+  if (granted === '*') return true;
+  if (granted === required) return true;
 
-  for (let i = 0; i < requiredParts.length; i++) {
-    const grantedPart = grantedParts[i];
-    const requiredPart = requiredParts[i];
+  const [grantedResource, grantedAction] = granted.split('.');
+  const [requiredResource, requiredAction] = required.split('.');
 
-    if (grantedPart === undefined) return false;
-    if (grantedPart === '*') continue;
-    if (grantedPart !== requiredPart) return false;
-  }
+  if (!grantedResource || !requiredResource) return false;
 
-  return true;
+  const resourceMatch = grantedResource === '*' || grantedResource === requiredResource;
+  const actionMatch = grantedAction === '*' || grantedAction === requiredAction;
+
+  return resourceMatch && actionMatch;
 }

@@ -91,12 +91,12 @@ export class AuthService {
 
     // Extract permissions
     const permissions = user.userRoles.flatMap((ur: any) =>
-      ur.role.rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.resource}:${rp.permission.action}`)
+      ur.role.rolePermissions.map((rp: any) => `${rp.permission.resource}.${rp.permission.action}`)
     );
 
-    // Default to wildcard if it's the owner role and permissions are empty (just seeded)
-    const hasOwnerRole = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
-    const activePermissions = permissions.length === 0 && hasOwnerRole ? ['*:*:*'] : permissions;
+    // Default to wildcard if it's Owner or SuperAdmin
+    const hasOwnerOrSuperAdmin = user.userRoles.some((ur: any) => ur.role.name === 'Owner' || ur.role.name === 'SuperAdmin');
+    const activePermissions = hasOwnerOrSuperAdmin ? ['*'] : permissions;
 
     const tokens = await this.generateTokens(user.id, shopId, user.email, activePermissions);
 
@@ -151,11 +151,11 @@ export class AuthService {
     }
 
     const permissions = user.userRoles.flatMap((ur: any) =>
-      ur.role.rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.resource}:${rp.permission.action}`)
+      ur.role.rolePermissions.map((rp: any) => `${rp.permission.resource}.${rp.permission.action}`)
     );
 
-    const hasOwnerRole = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
-    const activePermissions = permissions.length === 0 && hasOwnerRole ? ['*:*:*'] : permissions;
+    const hasOwnerOrSuperAdmin = user.userRoles.some((ur: any) => ur.role.name === 'Owner' || ur.role.name === 'SuperAdmin');
+    const activePermissions = hasOwnerOrSuperAdmin ? ['*'] : permissions;
 
     const tokens = await this.generateTokens(
       user.id,
@@ -363,11 +363,11 @@ export class AuthService {
 
     // Extract permissions
     const permissions = user.userRoles.flatMap((ur: any) =>
-      ur.role.rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.resource}:${rp.permission.action}`)
+      ur.role.rolePermissions.map((rp: any) => `${rp.permission.resource}.${rp.permission.action}`)
     );
 
-    const hasOwnerRole = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
-    const activePermissions = permissions.length === 0 && hasOwnerRole ? ['*:*:*'] : permissions;
+    const hasOwnerOrSuperAdmin = user.userRoles.some((ur: any) => ur.role.name === 'Owner' || ur.role.name === 'SuperAdmin');
+    const activePermissions = hasOwnerOrSuperAdmin ? ['*'] : permissions;
 
     const tokens = await this.generateTokens(user.id, dto.shopId, user.email, activePermissions);
 
