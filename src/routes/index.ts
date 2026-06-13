@@ -16,6 +16,8 @@ import { mfsRoutes } from './mfs.routes';
 import { flexiloadRoutes } from './flexiload.routes';
 import { reportsRoutes } from './reports.routes';
 import { telegramRoutes } from './telegram.routes';
+import { auditRoutes } from './audit.routes';
+import { uploadRoutes } from './upload.routes';
 
 const router = Router();
 
@@ -36,6 +38,8 @@ router.use('/mfs', mfsRoutes);
 router.use('/flexiload', flexiloadRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/telegram', telegramRoutes);
+router.use('/audit', auditRoutes);
+router.use('/uploads', uploadRoutes);
 
 // Example route for now
 router.get('/status', (_req, res) => {

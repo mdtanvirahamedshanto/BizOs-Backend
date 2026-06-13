@@ -20,6 +20,7 @@ async function bootstrap() {
 
     registerEventHandlers();
 
+    app.set('trust proxy', 1);
     const httpServer = createServer(app);
     const io = createSocketServer(httpServer);
     setSocketServer(io);

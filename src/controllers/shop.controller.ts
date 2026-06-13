@@ -30,7 +30,7 @@ export class ShopController {
       const shopId = req.params.id as string;
       this.validateShopAccess(req, shopId);
 
-      const result = await this.shopService.updateShop(shopId, req.body);
+      const result = await this.shopService.updateShop(shopId, req.body, req.user?.id);
       sendSuccess(res, result.data);
     } catch (err) {
       next(err);
@@ -42,7 +42,7 @@ export class ShopController {
       const shopId = req.params.id as string;
       this.validateShopAccess(req, shopId);
 
-      const result = await this.shopService.updateSettings(shopId, req.body);
+      const result = await this.shopService.updateSettings(shopId, req.body, req.user?.id);
       sendSuccess(res, result.data);
     } catch (err) {
       next(err);
@@ -54,7 +54,7 @@ export class ShopController {
       const shopId = req.params.id as string;
       this.validateShopAccess(req, shopId);
 
-      await this.shopService.deleteShop(shopId);
+      await this.shopService.deleteShop(shopId, req.user?.id);
       sendNoContent(res);
     } catch (err) {
       next(err);

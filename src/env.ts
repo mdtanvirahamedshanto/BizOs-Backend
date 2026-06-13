@@ -56,6 +56,10 @@ const envSchema = z.object({
   STORAGE_SECRET_KEY: z.string().optional(),
   STORAGE_BUCKET: z.string().default('bizos-uploads'),
   STORAGE_REGION: z.string().default('us-east-1'),
+  STORAGE_PUBLIC_BASE_URL: z.string().url().optional(),
+
+  // API Docs
+  ENABLE_SWAGGER: z.coerce.boolean().optional(),
 
   // Email
   SMTP_HOST: z.string().optional(),
@@ -81,7 +85,9 @@ const envSchema = z.object({
   TELEGRAM_LINK_TTL_SEC: z.coerce.number().default(900),
 });
 
-export type Env = z.infer<typeof envSchema>;
+export type Env = z.infer<typeof envSchema> & {
+  ENABLE_SWAGGER: boolean;
+};
 
 function validateEnv(): Env {
   const result = envSchema.safeParse(process.env);
@@ -93,7 +99,10 @@ function validateEnv(): Env {
     process.exit(1);
   }
 
-  return result.data;
+  return {
+    ...result.data,
+    ENABLE_SWAGGER: result.data.ENABLE_SWAGGER ?? result.data.NODE_ENV !== 'production',
+  };
 }
 
 /** Validated environment variables — safe to use throughout the application. */

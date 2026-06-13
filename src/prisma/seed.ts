@@ -55,6 +55,9 @@ async function main() {
     { module: 'reports', resource: 'reports', action: 'read', description: 'Read reports and dashboard metrics' },
     { module: 'integrations', resource: 'telegram', action: 'read', description: 'View Telegram link status' },
     { module: 'integrations', resource: 'telegram', action: 'write', description: 'Link and unlink Telegram account' },
+    { module: 'system', resource: 'audit', action: 'read', description: 'Read audit trail logs' },
+    { module: 'system', resource: 'uploads', action: 'read', description: 'Read uploaded files and presigned URLs' },
+    { module: 'system', resource: 'uploads', action: 'write', description: 'Upload and delete files' },
   ];
 
   const seededPermissions = [];

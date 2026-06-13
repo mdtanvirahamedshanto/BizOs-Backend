@@ -4,6 +4,7 @@ import { ReportsRepository } from '@/repositories/reports.repository';
 import { success, type ServiceResult } from '@/types/service';
 import { CacheService } from '@/services/cache.service';
 import { reportEvents } from '@/events/report.events';
+import { AuditService } from '@/services/audit.service';
 
 type DateRange = { startDate: Date; endDate: Date };
 
@@ -435,6 +436,15 @@ export class ReportsService {
     parameters: Record<string, unknown> = {},
   ): Promise<ServiceResult<{ status: string; reportType: string }>> {
     reportEvents.requested({ shopId, userId, reportType, parameters });
+
+    await AuditService.log({
+      shopId,
+      userId,
+      action: 'report.requested',
+      entity: 'reports',
+      metadata: { reportType, parameters },
+    });
+
     return success({ status: 'queued', reportType });
   }
 

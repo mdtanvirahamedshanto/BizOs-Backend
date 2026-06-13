@@ -6,6 +6,7 @@ import { NotFoundError, ConflictError } from '@/utils/errors';
 import { TelegramRepository } from '@/repositories/telegram.repository';
 import { TelegramEntryService } from '@/services/telegramEntry.service';
 import { parseNaturalLanguageEntry, type ParsedEntry } from '@/bot/nlp/parser';
+import { AuditService } from '@/services/audit.service';
 
 export interface TelegramLinkContext {
   shopId: string;
@@ -35,6 +36,14 @@ export class TelegramService {
     const ttl = env.TELEGRAM_LINK_TTL_SEC;
     await redis.setex(this.linkKey(token), ttl, JSON.stringify({ shopId, userId }));
 
+    await AuditService.log({
+      shopId,
+      userId,
+      action: 'telegram.link_token_created',
+      entity: 'telegram_links',
+      metadata: { expiresIn: ttl },
+    });
+
     const deepLink = env.TELEGRAM_BOT_USERNAME
       ? `https://t.me/${env.TELEGRAM_BOT_USERNAME}?start=${token}`
       : `https://t.me/share/url?url=start ${token}`;
@@ -60,6 +69,15 @@ export class TelegramService {
     if (!link) {
       throw new NotFoundError('Telegram link');
     }
+
+    await AuditService.log({
+      shopId,
+      userId,
+      action: 'telegram.unlinked',
+      entity: 'telegram_links',
+      entityId: link.id,
+    });
+
     return success(undefined);
   }
 
@@ -87,6 +105,15 @@ export class TelegramService {
     if (!context) {
       throw new NotFoundError('Telegram link');
     }
+
+    await AuditService.log({
+      shopId,
+      userId,
+      action: 'telegram.linked',
+      entity: 'telegram_links',
+      entityId: link.id,
+      metadata: { telegramChatId: telegramChatId.toString(), telegramUsername },
+    });
 
     return {
       shopName: context.shop.name,
@@ -130,6 +157,14 @@ export class TelegramService {
         messageText: text,
         telegramMessageId: telegramMessageId ? BigInt(telegramMessageId) : undefined,
         status: 'SENT',
+      });
+
+      await AuditService.log({
+        shopId: context.shopId,
+        userId: context.userId,
+        action: `telegram.entry.${result.type}`,
+        entity: result.type,
+        metadata: { raw: text, ...result.data },
       });
 
       return result.message;
