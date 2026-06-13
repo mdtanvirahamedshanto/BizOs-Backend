@@ -13,6 +13,7 @@ import type {
   KhataAdjustmentDTO,
 } from '@/validators/khata.schema';
 import { AuditService } from './audit.service';
+import { khataEvents } from '@/events/khata.events';
 
 export class KhataService {
   constructor(private khataRepo: KhataRepository) {}
@@ -93,6 +94,14 @@ export class KhataService {
       newValues: result as any,
     });
 
+    khataEvents.entryAdded({
+      shopId,
+      khataAccountId: accountId,
+      entryId: result.payment.id,
+      amountCents: dto.amountCents,
+      type: 'CREDIT',
+    });
+
     return success(result);
   }
 
@@ -118,6 +127,14 @@ export class KhataService {
       newValues: result as any,
     });
 
+    khataEvents.entryAdded({
+      shopId,
+      khataAccountId: accountId,
+      entryId: result.payment.id,
+      amountCents: dto.amountCents,
+      type: 'DEBIT',
+    });
+
     return success(result);
   }
 
@@ -140,6 +157,14 @@ export class KhataService {
       entity: 'khata_accounts',
       entityId: accountId,
       newValues: result as any,
+    });
+
+    khataEvents.entryAdded({
+      shopId,
+      khataAccountId: accountId,
+      entryId: result.entry.id,
+      amountCents: dto.amountCents,
+      type: dto.type,
     });
 
     return success(result);

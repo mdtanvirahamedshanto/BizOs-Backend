@@ -50,3 +50,10 @@ export const dashboardQuerySchema = z
 
 export type DashboardQueryInput = z.infer<typeof dashboardQuerySchema>;
 export type DashboardTimeframe = z.infer<typeof dashboardTimeframeSchema>;
+
+export const generateReportSchema = z.object({
+  reportType: z.enum(['daily_sales', 'monthly_sales', 'profit', 'inventory', 'dues']),
+  parameters: z.record(z.unknown()).optional().default({}),
+});
+
+export type GenerateReportInput = z.infer<typeof generateReportSchema>;

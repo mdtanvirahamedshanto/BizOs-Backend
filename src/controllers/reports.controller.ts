@@ -68,4 +68,21 @@ export class ReportsController {
       next(err);
     }
   };
+
+  generateReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.shopId!;
+      const userId = req.user?.id!;
+      const { reportType, parameters } = req.body;
+      const result = await this.reportsService.requestAsyncReport(
+        shopId,
+        userId,
+        reportType,
+        parameters,
+      );
+      sendSuccess(res, result.data, 202);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

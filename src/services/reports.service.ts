@@ -2,6 +2,8 @@ import type { DashboardQueryInput, ReportQueryInput } from '@/validators/reports
 import type { DashboardTimeframe } from '@/validators/reports.schema';
 import { ReportsRepository } from '@/repositories/reports.repository';
 import { success, type ServiceResult } from '@/types/service';
+import { CacheService } from '@/services/cache.service';
+import { reportEvents } from '@/events/report.events';
 
 type DateRange = { startDate: Date; endDate: Date };
 
@@ -413,6 +415,30 @@ export class ReportsService {
     shopId: string,
     query: DashboardQueryInput,
   ): Promise<ServiceResult<unknown>> {
+    const cacheKey = CacheService.buildKey(
+      shopId,
+      'reports',
+      `dashboard:${query.timeframe}:${query.startDate?.toISOString() ?? 'default'}:${query.endDate?.toISOString() ?? 'default'}`,
+    );
+
+    const data = await CacheService.getOrSet(cacheKey, 60, async () => {
+      return this.buildDashboardMetrics(shopId, query);
+    });
+
+    return success(data);
+  }
+
+  async requestAsyncReport(
+    shopId: string,
+    userId: string,
+    reportType: string,
+    parameters: Record<string, unknown> = {},
+  ): Promise<ServiceResult<{ status: string; reportType: string }>> {
+    reportEvents.requested({ shopId, userId, reportType, parameters });
+    return success({ status: 'queued', reportType });
+  }
+
+  private async buildDashboardMetrics(shopId: string, query: DashboardQueryInput) {
     const { startDate, endDate } = resolveTimeframeBounds(
       query.timeframe,
       query.startDate,
@@ -508,7 +534,7 @@ export class ReportsService {
       expenseByCategory.set(key, existing);
     }
 
-    return success({
+    return {
       timeframe: query.timeframe,
       period: { startDate, endDate },
       previousPeriod,
@@ -536,6 +562,6 @@ export class ReportsService {
         payments: recentPayments,
         expenses: recentExpenses,
       },
-    });
+    };
   }
 }

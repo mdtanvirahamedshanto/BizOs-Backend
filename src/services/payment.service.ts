@@ -7,6 +7,7 @@ import { PAGINATION_DEFAULTS } from '@/types/pagination';
 import type { PaginatedResult } from '@/types/pagination';
 import type { CreatePaymentDTO, PaymentQueryDTO, RefundPaymentDTO } from '@/validators/payment.schema';
 import { AuditService } from './audit.service';
+import { paymentEvents } from '@/events/payment.events';
 
 export class PaymentService {
   constructor(private paymentRepo: PaymentRepository) {}
@@ -28,6 +29,13 @@ export class PaymentService {
       entity: 'payments',
       entityId: payment.id,
       newValues: payment as any,
+    });
+
+    paymentEvents.recorded({
+      shopId,
+      paymentId: payment.id,
+      type: payment.type,
+      amountCents: payment.amountCents,
     });
 
     return success(payment);

@@ -7,7 +7,7 @@ import { authenticate } from '@/middlewares/authenticate';
 import { tenantContext } from '@/middlewares/tenantContext';
 import { authorize } from '@/middlewares/authorize';
 import { validate } from '@/middlewares/validate';
-import { reportQuerySchema, dashboardQuerySchema } from '@/validators/reports.schema';
+import { reportQuerySchema, dashboardQuerySchema, generateReportSchema } from '@/validators/reports.schema';
 
 const router = Router();
 const reportsRepo = new ReportsRepository(prisma);
@@ -42,6 +42,12 @@ router.get(
   authorize('reports.read'),
   validate(dashboardQuerySchema, 'query'),
   reportsController.getDashboardMetrics,
+);
+router.post(
+  '/generate',
+  authorize('reports.read'),
+  validate(generateReportSchema),
+  reportsController.generateReport,
 );
 
 export const reportsRoutes = router;

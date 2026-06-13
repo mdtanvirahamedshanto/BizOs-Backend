@@ -15,6 +15,8 @@ import type {
   ProductQueryDTO,
 } from '@/validators/product.schema';
 import { AuditService } from './audit.service';
+import { CacheService } from './cache.service';
+import { productEvents } from '@/events/product.events';
 
 export class ProductService {
   constructor(private productRepo: ProductRepository) {}
@@ -241,10 +243,18 @@ export class ProductService {
   }
 
   async getProduct(shopId: string, id: string): Promise<ServiceResult<any>> {
+    const cacheKey = CacheService.buildKey(shopId, 'inventory', 'product', id);
+    const cached = await CacheService.get<any>(cacheKey);
+    if (cached) {
+      return success(cached);
+    }
+
     const product = await this.productRepo.findProductById(shopId, id);
     if (!product) {
       throw new NotFoundError('Product');
     }
+
+    await CacheService.set(cacheKey, product, 300);
     return success(product);
   }
 
@@ -286,6 +296,14 @@ export class ProductService {
 
     const updated = await this.productRepo.updateProduct(shopId, id, updateData);
 
+    await CacheService.del(CacheService.buildKey(shopId, 'inventory', 'product', id));
+
+    productEvents.updated({
+      shopId,
+      productId: id,
+      changes: dto as Record<string, unknown>,
+    });
+
     await AuditService.log({
       shopId,
       userId: actorUserId,
@@ -306,6 +324,8 @@ export class ProductService {
     }
 
     await this.productRepo.softDeleteProduct(shopId, id);
+
+    await CacheService.del(CacheService.buildKey(shopId, 'inventory', 'product', id));
 
     await AuditService.log({
       shopId,

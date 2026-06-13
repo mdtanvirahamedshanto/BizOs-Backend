@@ -15,6 +15,7 @@ import type {
   RecurringExpenseQueryDTO,
 } from '@/validators/expense.schema';
 import { AuditService } from './audit.service';
+import { expenseEvents } from '@/events/expense.events';
 
 export class ExpenseService {
   constructor(private expenseRepo: ExpenseRepository) {}
@@ -119,6 +120,13 @@ export class ExpenseService {
       entity: 'expenses',
       entityId: expense.id,
       newValues: expense as any,
+    });
+
+    expenseEvents.created({
+      shopId,
+      expenseId: expense.id,
+      amountCents: expense.amountCents,
+      title: expense.title,
     });
 
     return success(expense);

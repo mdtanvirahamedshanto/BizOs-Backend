@@ -12,6 +12,7 @@ import type { ServiceResult } from '@/types/service';
 import type { AuthResult, AuthTokens } from '@/types/auth.types';
 import type { AuthRepository } from '@/repositories/auth.repository';
 import { authEvents } from '@/events/auth.events';
+import { SessionService } from '@/services/session.service';
 import { createModuleLogger } from '@/config/logger';
 import type {
   RegisterDTO,
@@ -137,6 +138,10 @@ export class AuthService {
   }
 
   async refreshToken(refreshTokenValue: string): Promise<ServiceResult<AuthTokens>> {
+    if (await SessionService.isRefreshTokenBlacklisted(refreshTokenValue)) {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
     const stored = await this.authRepo.findRefreshToken(refreshTokenValue);
 
     if (!stored || stored.revokedAt || isExpired(stored.expiresAt)) {
@@ -172,8 +177,11 @@ export class AuthService {
 
     if (refreshTokenValue) {
       await this.authRepo.revokeRefreshToken(refreshTokenValue);
+      await SessionService.revokeRefreshSession(refreshTokenValue, userId);
+      await SessionService.blacklistRefreshToken(refreshTokenValue, 7 * 24 * 60 * 60);
     } else {
       await this.authRepo.revokeAllUserTokens(userId);
+      await SessionService.revokeAllUserSessions(userId);
     }
 
     if (user) {
@@ -419,6 +427,7 @@ export class AuthService {
     const refreshExpiry = addDuration(new Date(), env.JWT_REFRESH_EXPIRY);
 
     await this.authRepo.storeRefreshToken(userId, refreshToken, refreshExpiry);
+    await SessionService.storeRefreshSession(userId, shopId, refreshToken, refreshExpiry);
 
     return {
       accessToken,

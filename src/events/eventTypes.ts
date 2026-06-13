@@ -123,6 +123,27 @@ export interface ReportRequestedEvent {
   parameters: Record<string, unknown>;
 }
 
+export interface ReportCompletedEvent {
+  shopId: string;
+  userId: string;
+  reportType: string;
+  data?: Record<string, unknown>;
+}
+
+export interface PaymentRecordedEvent {
+  shopId: string;
+  paymentId: string;
+  type: string;
+  amountCents: number;
+}
+
+export interface ExpenseCreatedEvent {
+  shopId: string;
+  expenseId: string;
+  amountCents: number;
+  title: string;
+}
+
 // ─── Event Map ───────────────────────────────────
 // Maps event names to their payload types for type-safe event handling.
 
@@ -151,11 +172,16 @@ export interface DomainEventMap {
   // Khata
   'khata.entryAdded': KhataEntryAddedEvent;
 
+  // Finance
+  'payment.recorded': PaymentRecordedEvent;
+  'expense.created': ExpenseCreatedEvent;
+
   // Notification
   'notification.requested': NotificationRequestedEvent;
 
   // Reporting
   'report.requested': ReportRequestedEvent;
+  'report.completed': ReportCompletedEvent;
 }
 
 /** All valid event names */

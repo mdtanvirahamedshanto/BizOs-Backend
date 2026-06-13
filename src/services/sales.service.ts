@@ -8,6 +8,8 @@ import { PAGINATION_DEFAULTS } from '@/types/pagination';
 import type { PaginatedResult } from '@/types/pagination';
 import type { CreateSaleDTO, SaleQueryDTO, ReturnSaleDTO } from '@/validators/sales.schema';
 import { AuditService } from './audit.service';
+import { salesEvents } from '@/events/sales.events';
+import { inventoryEvents } from '@/events/inventory.events';
 
 export class SalesService {
   constructor(
@@ -141,6 +143,34 @@ export class SalesService {
       entityId: sale.id,
       newValues: sale as any,
     });
+
+    salesEvents.created({
+      shopId,
+      saleId: sale.id,
+      invoiceNumber: sale.invoiceNumber,
+      customerId: sale.customerId ?? undefined,
+      totalCents: sale.totalCents,
+    });
+    salesEvents.completed({
+      shopId,
+      saleId: sale.id,
+      invoiceNumber: sale.invoiceNumber,
+      totalCents: sale.totalCents,
+    });
+
+    for (const item of saleItemsData) {
+      const product = await this.productRepo.findProductById(shopId, item.productId);
+      if (product && product.stockQuantity <= product.lowStockThreshold) {
+        inventoryEvents.lowStock({
+          shopId,
+          productId: product.id,
+          productName: product.name,
+          sku: product.sku,
+          currentStock: product.stockQuantity,
+          threshold: product.lowStockThreshold,
+        });
+      }
+    }
 
     return success(sale);
   }
