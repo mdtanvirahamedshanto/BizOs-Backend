@@ -32,6 +32,9 @@ async function main() {
     { module: 'inventory', resource: 'purchases', action: 'update', description: 'Update purchases' },
     { module: 'inventory', resource: 'purchases', action: 'delete', description: 'Delete purchases' },
     { module: 'inventory', resource: 'purchases', action: 'return', description: 'Process purchase returns' },
+    { module: 'finance', resource: 'khata', action: 'read', description: 'Read khata accounts & ledger entries' },
+    { module: 'finance', resource: 'khata', action: 'write', description: 'Post collections and repayments to khata' },
+    { module: 'finance', resource: 'khata', action: 'update', description: 'Adjust khata account balances' },
   ];
 
   const seededPermissions = [];
