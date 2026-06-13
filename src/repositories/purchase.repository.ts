@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { NotFoundError, ConflictError } from '@/utils/errors';
+import { CashbookRepository } from './cashbook.repository';
 
 export class PurchaseRepository {
   constructor(private prisma: PrismaClient) {}
@@ -205,7 +206,7 @@ export class PurchaseRepository {
 
       // 3. Create upfront Payment record if present
       if (purchaseData.payment && purchaseData.payment.amountCents > 0) {
-        await tx.payment.create({
+        const payment = await tx.payment.create({
           data: {
             shopId,
             type: 'MADE', // shop pays supplier
@@ -219,6 +220,17 @@ export class PurchaseRepository {
             purchaseId: purchase.id,
           },
         });
+
+        if (purchaseData.payment.method === 'CASH') {
+          await CashbookRepository.recordEntry(tx, shopId, {
+            type: 'OUT',
+            amountCents: purchaseData.payment.amountCents,
+            description: `Upfront cash payment for Purchase Order ${referenceNumber}`,
+            referenceType: 'payment',
+            referenceId: payment.id,
+            recordedBy: userId,
+          });
+        }
       }
 
       // 4. Update Supplier ledger stats & Khata Account balance if applicable
@@ -533,7 +545,7 @@ export class PurchaseRepository {
 
       // 3. Create cash refund record (Payment RECEIVED) if refund is paid back by supplier
       if (returnData.refundAmountCents > 0) {
-        await tx.payment.create({
+        const payment = await tx.payment.create({
           data: {
             shopId,
             type: 'RECEIVED', // money incoming to shop from supplier
@@ -545,6 +557,15 @@ export class PurchaseRepository {
             recordedBy: userId,
             purchaseId: purchase.id,
           },
+        });
+
+        await CashbookRepository.recordEntry(tx, shopId, {
+          type: 'IN',
+          amountCents: returnData.refundAmountCents,
+          description: `Cash refund received for returned items on Purchase PO ${purchase.referenceNumber}`,
+          referenceType: 'payment',
+          referenceId: payment.id,
+          recordedBy: userId,
         });
       }
 

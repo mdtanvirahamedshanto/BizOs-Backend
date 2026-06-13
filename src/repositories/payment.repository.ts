@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { NotFoundError, ConflictError } from '@/utils/errors';
+import { CashbookRepository } from './cashbook.repository';
 
 export class PaymentRepository {
   constructor(private prisma: PrismaClient) {}
@@ -139,6 +140,18 @@ export class PaymentRepository {
           },
         });
 
+        // Log to Cashbook if method is CASH
+        if (data.method === 'CASH') {
+          await CashbookRepository.recordEntry(tx, shopId, {
+            type: 'IN',
+            amountCents: data.amountCents,
+            description: `Payment received for Invoice ${sale.invoiceNumber}`,
+            referenceType: 'payment',
+            referenceId: payment.id,
+            recordedBy: userId,
+          });
+        }
+
         // Adjust Customer Khata ledger
         if (sale.customerId) {
           let khata = await tx.khataAccount.findFirst({
@@ -242,6 +255,18 @@ export class PaymentRepository {
           },
         });
 
+        // Log to Cashbook if method is CASH
+        if (data.method === 'CASH') {
+          await CashbookRepository.recordEntry(tx, shopId, {
+            type: 'OUT',
+            amountCents: data.amountCents,
+            description: `Payout made for Purchase Order ${purchase.referenceNumber}`,
+            referenceType: 'payment',
+            referenceId: payment.id,
+            recordedBy: userId,
+          });
+        }
+
         // Adjust Supplier Khata ledger
         if (purchase.supplierId) {
           let khata = await tx.khataAccount.findFirst({
@@ -326,6 +351,20 @@ export class PaymentRepository {
           },
         });
 
+        // Log to Cashbook if method is CASH
+        if (data.method === 'CASH') {
+          await CashbookRepository.recordEntry(tx, shopId, {
+            type: isCustomer ? 'IN' : 'OUT',
+            amountCents: data.amountCents,
+            description: isCustomer
+              ? `Customer khata collection: ${data.notes || 'No notes'}`
+              : `Supplier khata repayment payout: ${data.notes || 'No notes'}`,
+            referenceType: 'payment',
+            referenceId: payment.id,
+            recordedBy: userId,
+          });
+        }
+
         // Update Khata Account
         await tx.khataAccount.update({
           where: { id: khata.id },
@@ -394,6 +433,16 @@ export class PaymentRepository {
           saleId: payment.saleId,
           purchaseId: payment.purchaseId,
         },
+      });
+
+      // Log refund to Cashbook (refunds default to method: CASH)
+      await CashbookRepository.recordEntry(tx, shopId, {
+        type: isReceived ? 'OUT' : 'IN',
+        amountCents: payment.amountCents,
+        description: `Refund for payment transaction ${paymentId}`,
+        referenceType: 'payment',
+        referenceId: refundPayment.id,
+        recordedBy: userId,
       });
 
       // ==========================================

@@ -35,6 +35,17 @@ async function main() {
     { module: 'finance', resource: 'khata', action: 'read', description: 'Read khata accounts & ledger entries' },
     { module: 'finance', resource: 'khata', action: 'write', description: 'Post collections and repayments to khata' },
     { module: 'finance', resource: 'khata', action: 'update', description: 'Adjust khata account balances' },
+    { module: 'finance', resource: 'expenses', action: 'read', description: 'Read expenses' },
+    { module: 'finance', resource: 'expenses', action: 'write', description: 'Create daily and recurring expenses' },
+    { module: 'finance', resource: 'expenses', action: 'update', description: 'Update expenses' },
+    { module: 'finance', resource: 'expenses', action: 'delete', description: 'Delete expenses' },
+    { module: 'finance', resource: 'expense-categories', action: 'read', description: 'Read expense categories' },
+    { module: 'finance', resource: 'expense-categories', action: 'write', description: 'Create expense categories' },
+    { module: 'finance', resource: 'expense-categories', action: 'update', description: 'Update expense categories' },
+    { module: 'finance', resource: 'expense-categories', action: 'delete', description: 'Delete expense categories' },
+    { module: 'finance', resource: 'cashbook', action: 'read', description: 'Read cashbook entries and closings' },
+    { module: 'finance', resource: 'cashbook', action: 'write', description: 'Post cashbook manual cash in/out' },
+    { module: 'finance', resource: 'cashbook', action: 'update', description: 'Perform cashbook daily closing operations' },
   ];
 
   const seededPermissions = [];

@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { NotFoundError, ConflictError } from '@/utils/errors';
+import { CashbookRepository } from './cashbook.repository';
 
 export class SalesRepository {
   constructor(private prisma: PrismaClient) {}
@@ -227,7 +228,7 @@ export class SalesRepository {
 
       // 3. Create upfront Payment record if present
       if (saleData.payment && saleData.payment.amountCents > 0) {
-        await tx.payment.create({
+        const payment = await tx.payment.create({
           data: {
             shopId,
             type: 'RECEIVED',
@@ -241,6 +242,17 @@ export class SalesRepository {
             saleId: sale.id,
           },
         });
+
+        if (saleData.payment.method === 'CASH') {
+          await CashbookRepository.recordEntry(tx, shopId, {
+            type: 'IN',
+            amountCents: saleData.payment.amountCents,
+            description: `Upfront cash payment for Invoice ${invoiceNumber}`,
+            referenceType: 'payment',
+            referenceId: payment.id,
+            recordedBy: userId,
+          });
+        }
       }
 
       // 4. Update Customer stats & Khata Account balance if applicable
@@ -478,7 +490,7 @@ export class SalesRepository {
 
       // 3. Create cash refund record (Payment MADE) if cash is returned
       if (returnData.refundAmountCents > 0) {
-        await tx.payment.create({
+        const payment = await tx.payment.create({
           data: {
             shopId,
             type: 'MADE',
@@ -490,6 +502,15 @@ export class SalesRepository {
             recordedBy: userId,
             saleId: sale.id,
           },
+        });
+
+        await CashbookRepository.recordEntry(tx, shopId, {
+          type: 'OUT',
+          amountCents: returnData.refundAmountCents,
+          description: `Cash refund for returned items on Invoice ${sale.invoiceNumber}`,
+          referenceType: 'payment',
+          referenceId: payment.id,
+          recordedBy: userId,
         });
       }
 

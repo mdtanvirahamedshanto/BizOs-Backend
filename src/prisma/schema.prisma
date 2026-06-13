@@ -159,6 +159,9 @@ model Shop {
   telegramMessages   TelegramMessage[]
   reportSnapshots    ReportSnapshot[]
   auditLogs          AuditLog[]
+  recurringExpenses  RecurringExpense[]
+  cashbookEntries    CashbookEntry[]
+  dailyClosings      DailyClosing[]
 
   @@map("shops")
 }
@@ -196,6 +199,9 @@ model User {
   telegramLinks    TelegramLink[]
   reportSnapshots  ReportSnapshot[]  @relation("ReportGenerator")
   auditLogs        AuditLog[]
+  recurringExpensesRecorded RecurringExpense[] @relation("RecurringExpenseRecorder")
+  cashbookEntriesRecorded   CashbookEntry[]    @relation("CashbookEntryRecorder")
+  dailyClosingsRecorded     DailyClosing[]     @relation("DailyClosingRecorder")
 
   @@unique([shopId, email], map: "uq_users_shop_email")
   @@index([shopId])
@@ -638,8 +644,9 @@ model ExpenseCategory {
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
 
   // ── Relations ──
-  shop     Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  expenses Expense[]
+  shop              Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
 
   @@unique([shopId, name], map: "uq_expense_categories_shop_name")
   @@map("expense_categories")
@@ -877,4 +884,95 @@ model AuditLog {
   @@index([shopId, entity, entityId], map: "idx_audit_logs_entity")
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  23. CASHBOOK & FINANCE                                                   ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+enum CashbookEntryType {
+  IN
+  OUT
+}
+
+enum RecurringExpenseFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model CashbookEntry {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId              String            @map("shop_id") @db.Uuid
+  type                CashbookEntryType
+  amountCents         Int               @map("amount_cents")
+  runningBalanceCents Int               @map("running_balance_cents")
+  description         String
+  referenceType       String?           @map("reference_type") @db.VarChar(50) // sale, purchase, expense, khata, manual
+  referenceId         String?           @map("reference_id") @db.Uuid
+  paymentId           String?           @map("payment_id") @db.Uuid
+  recordedBy          String            @map("recorded_by") @db.Uuid
+  entryDate           DateTime          @default(now()) @map("entry_date") @db.Timestamptz
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  recorder User @relation("CashbookEntryRecorder", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@index([shopId, entryDate])
+  @@index([shopId, type])
+  @@map("cashbook_entries")
+}
+
+model DailyClosing {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId               String   @map("shop_id") @db.Uuid
+  closingDate          DateTime @map("closing_date") @db.Date
+  openingBalanceCents  Int      @map("opening_balance_cents")
+  cashInCents          Int      @map("cash_in_cents")
+  cashOutCents         Int      @map("cash_out_cents")
+  expectedBalanceCents Int      @map("expected_balance_cents")
+  actualBalanceCents   Int      @map("actual_balance_cents")
+  differenceCents      Int      @map("difference_cents")
+  notes                String?
+  closedBy             String   @map("closed_by") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  recorder User @relation("DailyClosingRecorder", fields: [closedBy], references: [id], onDelete: Restrict)
+
+  @@unique([shopId, closingDate], map: "uq_daily_closings_shop_date")
+  @@map("daily_closings")
+}
+
+model RecurringExpense {
+  id            String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId        String                    @map("shop_id") @db.Uuid
+  categoryId    String?                   @map("category_id") @db.Uuid
+  title         String                    @db.VarChar(300)
+  description   String?
+  amountCents   Int                       @map("amount_cents")
+  paymentMethod PaymentMethod             @default(CASH) @map("payment_method")
+  frequency     RecurringExpenseFrequency
+  startDate     DateTime                  @map("start_date") @db.Timestamptz
+  endDate       DateTime?                 @map("end_date") @db.Timestamptz
+  nextDueDate   DateTime                  @map("next_due_date") @db.Timestamptz
+  lastGenDate   DateTime?                 @map("last_gen_date") @db.Timestamptz
+  isActive      Boolean                   @default(true) @map("is_active")
+  recordedBy    String                    @map("recorded_by") @db.Uuid
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop     Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recorder User             @relation("RecurringExpenseRecorder", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@index([shopId, nextDueDate])
+  @@index([shopId, isActive])
+  @@map("recurring_expenses")
 }
