@@ -12,6 +12,8 @@ import { purchaseRoutes } from './purchase.routes';
 import { khataRoutes } from './khata.routes';
 import { expenseRoutes } from './expense.routes';
 import { cashbookRoutes } from './cashbook.routes';
+import { mfsRoutes } from './mfs.routes';
+import { flexiloadRoutes } from './flexiload.routes';
 
 const router = Router();
 
@@ -28,6 +30,8 @@ router.use('/purchases', purchaseRoutes);
 router.use('/khata', khataRoutes);
 router.use('/expenses', expenseRoutes);
 router.use('/cashbook', cashbookRoutes);
+router.use('/mfs', mfsRoutes);
+router.use('/flexiload', flexiloadRoutes);
 
 // Example route for now
 router.get('/status', (_req, res) => {

@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, PaymentMethod } from '@prisma/client';
 import { NotFoundError, ConflictError } from '@/utils/errors';
 import { CashbookRepository } from './cashbook.repository';
 
@@ -88,7 +88,7 @@ export class ExpenseRepository {
       description?: string | null;
       categoryId?: string | null;
       amountCents: number;
-      paymentMethod: 'CASH' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'BANK' | 'CARD' | 'CHECK' | 'OTHER';
+      paymentMethod: PaymentMethod;
       receiptUrl?: string | null;
       expenseDate?: Date;
       isRecurring?: boolean;
@@ -333,7 +333,7 @@ export class ExpenseRepository {
       title: string;
       description?: string | null;
       amountCents: number;
-      paymentMethod?: 'CASH' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'BANK' | 'CARD' | 'CHECK' | 'OTHER';
+      paymentMethod?: PaymentMethod;
       frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
       startDate: Date;
       endDate?: Date | null;
@@ -379,7 +379,7 @@ export class ExpenseRepository {
       title?: string;
       description?: string | null;
       amountCents?: number;
-      paymentMethod?: 'CASH' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'BANK' | 'CARD' | 'CHECK' | 'OTHER';
+      paymentMethod?: PaymentMethod;
       frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
       startDate?: Date;
       endDate?: Date | null;

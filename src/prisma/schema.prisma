@@ -82,6 +82,7 @@ enum PaymentMethod {
   BKASH
   NAGAD
   ROCKET
+  UPAY
   BANK
   CARD
   CHECK
@@ -162,6 +163,10 @@ model Shop {
   recurringExpenses  RecurringExpense[]
   cashbookEntries    CashbookEntry[]
   dailyClosings      DailyClosing[]
+  mfsAccounts            MfsAccount[]
+  mfsTransactions        MfsTransaction[]
+  flexiloadAccounts      FlexiloadAccount[]
+  flexiloadTransactions  FlexiloadTransaction[]
 
   @@map("shops")
 }
@@ -202,6 +207,8 @@ model User {
   recurringExpensesRecorded RecurringExpense[] @relation("RecurringExpenseRecorder")
   cashbookEntriesRecorded   CashbookEntry[]    @relation("CashbookEntryRecorder")
   dailyClosingsRecorded     DailyClosing[]     @relation("DailyClosingRecorder")
+  mfsTransactionsRecorded       MfsTransaction[]       @relation("MfsTransactionRecorder")
+  flexiloadTransactionsRecorded FlexiloadTransaction[] @relation("FlexiloadTransactionRecorder")
 
   @@unique([shopId, email], map: "uq_users_shop_email")
   @@index([shopId])
@@ -975,4 +982,141 @@ model RecurringExpense {
   @@index([shopId, nextDueDate])
   @@index([shopId, isActive])
   @@map("recurring_expenses")
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════════╗
+// ║  24. BANGLADESH FEATURES (MFS & FLEXILOAD)                                ║
+// ╚═══════════════════════════════════════════════════════════════════════════╝
+
+enum MfsProvider {
+  BKASH
+  NAGAD
+  ROCKET
+  UPAY
+}
+
+enum MfsAccountType {
+  AGENT
+  MERCHANT
+  PERSONAL
+}
+
+enum MfsTransactionType {
+  CASH_IN
+  CASH_OUT
+  SEND_MONEY
+  MERCHANT_PAY
+  BILL_PAY
+  ADJUSTMENT
+}
+
+enum MfsTxStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum MobileOperator {
+  GP
+  ROBI
+  AIRTEL
+  BL
+  TELETALK
+}
+
+enum FlexiloadStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum FlexiloadConnectionType {
+  PREPAID
+  POSTPAID
+}
+
+model MfsAccount {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId        String         @map("shop_id") @db.Uuid
+  provider      MfsProvider
+  accountNumber String         @map("account_number") @db.VarChar(20)
+  accountType   MfsAccountType @default(AGENT) @map("account_type")
+  balanceCents  Int            @default(0) @map("balance_cents")
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop         Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  transactions MfsTransaction[]
+
+  @@unique([shopId, provider, accountNumber], map: "uq_mfs_accounts_shop_provider_number")
+  @@map("mfs_accounts")
+}
+
+model MfsTransaction {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId          String             @map("shop_id") @db.Uuid
+  mfsAccountId    String             @map("mfs_account_id") @db.Uuid
+  type            MfsTransactionType
+  customerPhone   String             @map("customer_phone") @db.VarChar(20)
+  amountCents     Int                @map("amount_cents")
+  feeCents        Int                @default(0) @map("fee_cents")
+  commissionCents Int                @default(0) @map("commission_cents")
+  txid            String?            @db.VarChar(100)
+  status          MfsTxStatus        @default(COMPLETED)
+  notes           String?
+  recordedBy      String             @map("recorded_by") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop       Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  mfsAccount MfsAccount @relation(fields: [mfsAccountId], references: [id], onDelete: Restrict)
+  recorder   User       @relation("MfsTransactionRecorder", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@index([shopId, createdAt])
+  @@index([shopId, mfsAccountId])
+  @@map("mfs_transactions")
+}
+
+model FlexiloadAccount {
+  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId        String                 @map("shop_id") @db.Uuid
+  operator      MobileOperator
+  accountNumber String                 @map("account_number") @db.VarChar(20)
+  balanceCents  Int                    @default(0) @map("balance_cents")
+  isActive      Boolean                @default(true) @map("is_active")
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop         Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  transactions FlexiloadTransaction[]
+
+  @@unique([shopId, operator, accountNumber], map: "uq_flexiload_accounts_shop_operator_number")
+  @@map("flexiload_accounts")
+}
+
+model FlexiloadTransaction {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId          String                  @map("shop_id") @db.Uuid
+  accountId       String                  @map("account_id") @db.Uuid
+  recipientPhone  String                  @map("recipient_phone") @db.VarChar(20)
+  amountCents     Int                     @map("amount_cents")
+  commissionCents Int                     @default(0) @map("commission_cents")
+  status          FlexiloadStatus         @default(COMPLETED)
+  connectionType  FlexiloadConnectionType @default(PREPAID) @map("connection_type")
+  recordedBy      String                  @map("recorded_by") @db.Uuid
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime                @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ── Relations ──
+  shop             Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  flexiloadAccount FlexiloadAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  recorder         User             @relation("FlexiloadTransactionRecorder", fields: [recordedBy], references: [id], onDelete: Restrict)
+
+  @@index([shopId, createdAt])
+  @@index([shopId, accountId])
+  @@map("flexiload_transactions")
 }

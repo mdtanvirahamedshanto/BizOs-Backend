@@ -46,6 +46,12 @@ async function main() {
     { module: 'finance', resource: 'cashbook', action: 'read', description: 'Read cashbook entries and closings' },
     { module: 'finance', resource: 'cashbook', action: 'write', description: 'Post cashbook manual cash in/out' },
     { module: 'finance', resource: 'cashbook', action: 'update', description: 'Perform cashbook daily closing operations' },
+    { module: 'mfs', resource: 'mfs', action: 'read', description: 'Read MFS accounts and transactions' },
+    { module: 'mfs', resource: 'mfs', action: 'write', description: 'Create MFS accounts and record transactions' },
+    { module: 'mfs', resource: 'mfs', action: 'update', description: 'Update MFS accounts or transaction details' },
+    { module: 'mfs', resource: 'flexiload', action: 'read', description: 'Read Flexiload accounts and recharges' },
+    { module: 'mfs', resource: 'flexiload', action: 'write', description: 'Create Flexiload accounts and perform recharges' },
+    { module: 'mfs', resource: 'flexiload', action: 'update', description: 'Update Flexiload accounts' },
   ];
 
   const seededPermissions = [];
