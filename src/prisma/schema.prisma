@@ -400,6 +400,7 @@ model Customer {
   address             Json?
   tags                String[]
   notes               String?
+  attachments         Json?     @default("[]")
   totalPurchasesCents Int       @default(0) @map("total_purchases_cents")
   totalOrders         Int       @default(0) @map("total_orders")
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
