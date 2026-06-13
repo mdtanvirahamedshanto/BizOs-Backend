@@ -7,6 +7,7 @@ import { customerRoutes } from './customer.routes';
 import { supplierRoutes } from './supplier.routes';
 import { productRoutes, categoryRoutes } from './product.routes';
 import { salesRoutes } from './sales.routes';
+import { paymentRoutes } from './payment.routes';
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.use('/suppliers', supplierRoutes);
 router.use('/products', productRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/sales', salesRoutes);
+router.use('/payments', paymentRoutes);
 
 // Example route for now
 router.get('/status', (_req, res) => {

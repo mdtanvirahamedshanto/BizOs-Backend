@@ -24,6 +24,9 @@ async function main() {
     { module: 'sales', resource: 'sales', action: 'update', description: 'Update sales' },
     { module: 'sales', resource: 'sales', action: 'delete', description: 'Delete sales' },
     { module: 'sales', resource: 'sales', action: 'return', description: 'Process sales returns' },
+    { module: 'finance', resource: 'payments', action: 'create', description: 'Create payments' },
+    { module: 'finance', resource: 'payments', action: 'read', description: 'Read payments' },
+    { module: 'finance', resource: 'payments', action: 'delete', description: 'Delete payments/Refunds' },
   ];
 
   const seededPermissions = [];
