@@ -330,6 +330,7 @@ model Product {
   sku               String    @db.VarChar(100)
   barcode           String?   @db.VarChar(100)
   description       String?
+  brand             String?
   sellPriceCents    Int       @map("sell_price_cents")
   costPriceCents    Int       @default(0) @map("cost_price_cents")
   taxRate           Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 4)

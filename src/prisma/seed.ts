@@ -13,6 +13,12 @@ async function main() {
     { module: 'crm', resource: 'customers', action: 'read', description: 'Read customers' },
     { module: 'inventory', resource: 'products', action: 'create', description: 'Create products' },
     { module: 'inventory', resource: 'products', action: 'read', description: 'Read products' },
+    { module: 'inventory', resource: 'products', action: 'update', description: 'Update products' },
+    { module: 'inventory', resource: 'products', action: 'delete', description: 'Delete products' },
+    { module: 'crm', resource: 'suppliers', action: 'create', description: 'Create suppliers' },
+    { module: 'crm', resource: 'suppliers', action: 'read', description: 'Read suppliers' },
+    { module: 'crm', resource: 'suppliers', action: 'update', description: 'Update suppliers' },
+    { module: 'crm', resource: 'suppliers', action: 'delete', description: 'Delete suppliers' },
     { module: 'sales', resource: 'sales', action: 'create', description: 'Create sales' },
     { module: 'sales', resource: 'sales', action: 'read', description: 'Read sales' },
   ];
