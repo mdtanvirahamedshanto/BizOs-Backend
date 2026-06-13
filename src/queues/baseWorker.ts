@@ -1,6 +1,6 @@
 import { Worker, type Job, type WorkerOptions } from 'bullmq';
 import { bullConnection } from '@/config/bull';
-import { logger } from '@/config/logger';
+import { createModuleLogger } from '@/config/logger';
 
 /**
  * Abstract base worker class.
@@ -18,7 +18,7 @@ export abstract class BaseWorker<TData = unknown, TResult = unknown> {
     queueName: string,
     options?: Partial<WorkerOptions>,
   ) {
-    this.log = logger.child({ worker: queueName });
+    this.log = createModuleLogger(queueName);
 
     this.worker = new Worker<TData, TResult>(
       queueName,

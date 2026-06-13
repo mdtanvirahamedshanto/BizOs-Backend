@@ -1,54 +1,117 @@
-import pino from 'pino';
+import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 import { env } from '@/env';
 
-/**
- * Structured logger using Pino.
- * Uses pretty printing in development, JSON in production.
- *
- * Usage:
- *   logger.info({ userId, action }, 'User performed action');
- *   logger.error({ err, orderId }, 'Failed to process order');
- */
-export const logger = pino({
-  level: env.LOG_LEVEL,
-  transport:
-    env.NODE_ENV === 'development'
-      ? {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        }
-      : undefined,
-  base: {
-    service: env.APP_NAME,
-    env: env.NODE_ENV,
-  },
-  serializers: {
-    err: pino.stdSerializers.err,
-    req: pino.stdSerializers.req,
-    res: pino.stdSerializers.res,
-  },
-  // Redact sensitive fields from logs
-  redact: {
-    paths: ['req.headers.authorization', 'req.headers.cookie', '*.password', '*.passwordHash'],
-    censor: '[REDACTED]',
-  },
+const { combine, timestamp, printf, colorize, errors, json } = winston.format;
+
+// Custom format for console
+const consoleFormat = printf(({ level, message, timestamp, stack, ...meta }) => {
+  let log = `${timestamp} [${level}]: ${message}`;
+  if (Object.keys(meta).length > 0) {
+    log += `\n${JSON.stringify(meta, null, 2)}`;
+  }
+  if (stack) {
+    log += `\n${stack}`;
+  }
+  return log;
+});
+
+const isProd = env.NODE_ENV === 'production';
+
+// Create Winston logger instance
+export const winstonLogger = winston.createLogger({
+  level: env.LOG_LEVEL || 'info',
+  format: combine(
+    errors({ stack: true }),
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    json(),
+  ),
+  defaultMeta: { service: 'bizos-backend' },
+  transports: [
+    new winston.transports.Console({
+      format: isProd 
+        ? combine(timestamp(), json()) 
+        : combine(colorize(), timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), consoleFormat),
+    }),
+    // Daily rotate file for general logs
+    new DailyRotateFile({
+      filename: 'logs/application-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '14d',
+      level: 'info',
+    }),
+    // Daily rotate file for errors only
+    new DailyRotateFile({
+      filename: 'logs/error-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '30d',
+      level: 'error',
+    }),
+  ],
 });
 
 /**
- * Create a child logger scoped to a specific module.
- * Adds module context to every log line.
- *
- * Usage:
- *   const log = createModuleLogger('auth');
- *   log.info('Login attempt');
- *   // Output: { module: "auth", msg: "Login attempt", ... }
+ * Wrapper to maintain compatibility with Pino's `logger.info({ obj }, 'msg')` signature
+ * while using Winston under the hood.
  */
-export function createModuleLogger(module: string) {
-  return logger.child({ module });
+export class LoggerWrapper {
+  private moduleName?: string;
+
+  constructor(moduleName?: string) {
+    this.moduleName = moduleName;
+  }
+
+  private formatArgs(args: any[]): [string, any] {
+    if (args.length === 0) return ['', {}];
+    if (args.length === 1) {
+      if (typeof args[0] === 'string') return [args[0], this.getBaseMeta()];
+      return ['', { ...this.getBaseMeta(), ...args[0] }];
+    }
+    
+    // Pino style: logger.info({ obj }, 'msg')
+    if (typeof args[0] === 'object' && typeof args[1] === 'string') {
+      return [args[1], { ...this.getBaseMeta(), ...args[0] }];
+    }
+    
+    // Winston style fallback: logger.info('msg', { obj })
+    if (typeof args[0] === 'string' && typeof args[1] === 'object') {
+      return [args[0], { ...this.getBaseMeta(), ...args[1] }];
+    }
+
+    return [String(args[0]), this.getBaseMeta()];
+  }
+
+  private getBaseMeta() {
+    return this.moduleName ? { module: this.moduleName } : {};
+  }
+
+  info(...args: any[]) {
+    const [msg, meta] = this.formatArgs(args);
+    winstonLogger.info(msg, meta);
+  }
+
+  error(...args: any[]) {
+    const [msg, meta] = this.formatArgs(args);
+    winstonLogger.error(msg, meta);
+  }
+
+  warn(...args: any[]) {
+    const [msg, meta] = this.formatArgs(args);
+    winstonLogger.warn(msg, meta);
+  }
+
+  debug(...args: any[]) {
+    const [msg, meta] = this.formatArgs(args);
+    winstonLogger.debug(msg, meta);
+  }
 }
 
-export default logger;
+export const logger = new LoggerWrapper();
+
+export function createModuleLogger(module: string) {
+  return new LoggerWrapper(module);
+}
