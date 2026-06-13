@@ -26,6 +26,12 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
     return;
   }
 
+  // Stateless JWT clients (mobile, API integrations) do not use CSRF cookies
+  if (req.headers.authorization?.startsWith('Bearer ')) {
+    next();
+    return;
+  }
+
   const csrfCookie = req.cookies['_csrf'];
   const csrfHeader = req.headers['x-csrf-token'] as string;
 

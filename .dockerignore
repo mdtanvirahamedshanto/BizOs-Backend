@@ -1,0 +1,17 @@
+node_modules
+dist
+logs
+coverage
+.git
+.github
+.env
+.env.*
+!.env.production.example
+scratch
+*.md
+!README.md
+.vscode
+.idea
+tmp
+temp
+npm-debug.log*

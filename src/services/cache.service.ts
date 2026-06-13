@@ -37,13 +37,23 @@ export class CacheService {
     await redis.del(key);
   }
 
+  /**
+   * Delete keys matching a pattern using SCAN (safe for production — avoids blocking KEYS).
+   */
   static async invalidatePattern(pattern: string): Promise<number> {
-    const keys = await redis.keys(pattern);
-    if (keys.length === 0) {
-      return 0;
-    }
-    await redis.del(...keys);
-    return keys.length;
+    let cursor = '0';
+    let deleted = 0;
+
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
+
+      if (keys.length > 0) {
+        deleted += await redis.del(...keys);
+      }
+    } while (cursor !== '0');
+
+    return deleted;
   }
 
   static async getOrSet<T>(

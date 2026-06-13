@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 export class ReportsRepository {
   constructor(private prisma: PrismaClient) {}
@@ -43,6 +44,75 @@ export class ReportsRepository {
     });
   }
 
+  async getSalesAggregates(shopId: string, startDate?: Date, endDate?: Date) {
+    const saleDate = this.salesDateFilter(startDate, endDate);
+
+    const result = await this.prisma.sale.aggregate({
+      where: {
+        shopId,
+        deletedAt: null,
+        status: 'COMPLETED',
+        ...(saleDate && { saleDate }),
+      },
+      _sum: {
+        totalCents: true,
+        taxCents: true,
+        discountCents: true,
+      },
+      _count: { id: true },
+    });
+
+    return {
+      revenueCents: result._sum.totalCents ?? 0,
+      taxCents: result._sum.taxCents ?? 0,
+      discountCents: result._sum.discountCents ?? 0,
+      saleCount: result._count.id,
+    };
+  }
+
+  async getCOGSCents(shopId: string, startDate?: Date, endDate?: Date): Promise<number> {
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`s.shop_id = ${shopId}::uuid`,
+      Prisma.sql`s.deleted_at IS NULL`,
+      Prisma.sql`s.status = 'COMPLETED'::"SaleStatus"`,
+    ];
+
+    if (startDate) {
+      conditions.push(Prisma.sql`s.sale_date >= ${startDate}`);
+    }
+    if (endDate) {
+      conditions.push(Prisma.sql`s.sale_date <= ${endDate}`);
+    }
+
+    const whereClause = Prisma.join(conditions, ' AND ');
+
+    const result = await this.prisma.$queryRaw<[{ sum: bigint | null }]>`
+      SELECT COALESCE(SUM(si.quantity * p.cost_price_cents), 0) AS sum
+      FROM sale_items si
+      INNER JOIN sales s ON s.id = si.sale_id
+      INNER JOIN products p ON p.id = si.product_id
+      WHERE ${whereClause}
+    `;
+
+    return Number(result[0]?.sum ?? 0);
+  }
+
+  async getExpenseTotalCents(shopId: string, startDate?: Date, endDate?: Date): Promise<number> {
+    const expenseDate = this.salesDateFilter(startDate, endDate);
+
+    const result = await this.prisma.expense.aggregate({
+      where: {
+        shopId,
+        deletedAt: null,
+        ...(expenseDate && { expenseDate }),
+      },
+      _sum: { amountCents: true },
+    });
+
+    return result._sum.amountCents ?? 0;
+  }
+
+  /** @deprecated Prefer getCOGSCents for aggregate COGS — loads all line items into memory. */
   async getCOGSData(shopId: string, startDate?: Date, endDate?: Date) {
     const saleDate = this.salesDateFilter(startDate, endDate);
 

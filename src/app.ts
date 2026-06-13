@@ -36,8 +36,8 @@ app.use(
 );
 app.use(cors(corsOptions));
 app.use(compression());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: env.JSON_BODY_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: env.JSON_BODY_LIMIT }));
 app.use(cookieParser());
 
 // ─── Request Logging ──────────────────────────────────────

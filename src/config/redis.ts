@@ -11,8 +11,9 @@ export const redis = new Redis({
   port: env.REDIS_PORT,
   password: env.REDIS_PASSWORD || undefined,
   db: env.REDIS_DB,
-  maxRetriesPerRequest: null, // Required for BullMQ
+  maxRetriesPerRequest: 3,
   enableReadyCheck: true,
+  lazyConnect: false,
   retryStrategy(times: number) {
     const delay = Math.min(times * 200, 5000);
     logger.warn({ attempt: times, delay }, 'Redis connection retry');

@@ -497,6 +497,7 @@ model Sale {
 
   @@unique([shopId, invoiceNumber], map: "uq_sales_shop_invoice")
   @@index([shopId, saleDate])
+  @@index([shopId, status, saleDate], map: "idx_sales_shop_status_date")
   @@index([shopId, customerId])
   @@index([shopId, status])
   @@index([shopId, paymentStatus])

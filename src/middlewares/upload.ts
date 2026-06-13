@@ -1,12 +1,13 @@
 import multer from 'multer';
 import { ConflictError } from '@/utils/errors';
+import { env } from '@/env';
 
-const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
+const maxFileSizeBytes = env.UPLOAD_MAX_FILE_SIZE_MB * 1024 * 1024;
 
-export function createUploadMiddleware(maxFileSizeBytes = DEFAULT_MAX_BYTES) {
+export function createUploadMiddleware(maxFileSizeBytesOverride = maxFileSizeBytes) {
   return multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: maxFileSizeBytes, files: 1 },
+    limits: { fileSize: maxFileSizeBytesOverride, files: 1 },
     fileFilter: (_req, file, cb) => {
       const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
       if (!allowed.includes(file.mimetype)) {

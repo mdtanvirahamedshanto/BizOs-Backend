@@ -148,20 +148,13 @@ export class ReportsService {
     startDate: Date,
     endDate: Date,
   ): Promise<SalesMetrics> {
-    const [sales, cogsItems, expenses] = await Promise.all([
-      this.reportsRepo.getSalesData(shopId, startDate, endDate),
-      this.reportsRepo.getCOGSData(shopId, startDate, endDate),
-      this.reportsRepo.getExpensesData(shopId, startDate, endDate),
+    const [salesAgg, cogsCents, expenseCents] = await Promise.all([
+      this.reportsRepo.getSalesAggregates(shopId, startDate, endDate),
+      this.reportsRepo.getCOGSCents(shopId, startDate, endDate),
+      this.reportsRepo.getExpenseTotalCents(shopId, startDate, endDate),
     ]);
 
-    const revenueCents = sales.reduce((sum, sale) => sum + sale.totalCents, 0);
-    const taxCents = sales.reduce((sum, sale) => sum + sale.taxCents, 0);
-    const discountCents = sales.reduce((sum, sale) => sum + sale.discountCents, 0);
-    const cogsCents = cogsItems.reduce(
-      (sum, item) => sum + item.quantity * item.product.costPriceCents,
-      0,
-    );
-    const expenseCents = expenses.reduce((sum, expense) => sum + expense.amountCents, 0);
+    const { revenueCents, taxCents, discountCents, saleCount } = salesAgg;
     const grossProfitCents = revenueCents - taxCents - cogsCents;
     const netProfitCents = grossProfitCents - expenseCents;
 
@@ -169,7 +162,7 @@ export class ReportsService {
       revenueCents,
       taxCents,
       discountCents,
-      saleCount: sales.length,
+      saleCount,
       cogsCents,
       expenseCents,
       grossProfitCents,

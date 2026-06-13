@@ -44,11 +44,20 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900_000), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
 
+  // Request limits
+  JSON_BODY_LIMIT: z.string().default('1mb'),
+
+  // Workers
+  WORKER_CONCURRENCY: z.coerce.number().min(1).max(50).default(5),
+
   // CORS
   CORS_ORIGINS: z.string().default('http://localhost:3001'),
 
   // Logging
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).optional(),
+
+  // Uploads
+  UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().min(1).max(50).default(5),
 
   // File Storage
   STORAGE_ENDPOINT: z.string().optional(),
@@ -89,6 +98,41 @@ export type Env = z.infer<typeof envSchema> & {
   ENABLE_SWAGGER: boolean;
 };
 
+function assertProductionEnv(data: z.infer<typeof envSchema>): void {
+  if (data.NODE_ENV !== 'production') {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  if (data.JWT_ACCESS_SECRET.length < 32) {
+    errors.push('JWT_ACCESS_SECRET must be at least 32 characters in production');
+  }
+  if (data.JWT_REFRESH_SECRET.length < 32) {
+    errors.push('JWT_REFRESH_SECRET must be at least 32 characters in production');
+  }
+  if (!data.STORAGE_ENDPOINT) {
+    errors.push('STORAGE_ENDPOINT is required in production');
+  }
+  if (!data.STORAGE_ACCESS_KEY) {
+    errors.push('STORAGE_ACCESS_KEY is required in production');
+  }
+  if (!data.STORAGE_SECRET_KEY) {
+    errors.push('STORAGE_SECRET_KEY is required in production');
+  }
+  if (data.ENABLE_SWAGGER === true) {
+    errors.push('ENABLE_SWAGGER must be false in production');
+  }
+
+  if (errors.length > 0) {
+    console.error('❌ Production environment validation failed:');
+    for (const message of errors) {
+      console.error(`  - ${message}`);
+    }
+    process.exit(1);
+  }
+}
+
 function validateEnv(): Env {
   const result = envSchema.safeParse(process.env);
 
@@ -99,9 +143,16 @@ function validateEnv(): Env {
     process.exit(1);
   }
 
+  const enableSwagger = result.data.ENABLE_SWAGGER ?? result.data.NODE_ENV !== 'production';
+  const logLevel =
+    result.data.LOG_LEVEL ?? (result.data.NODE_ENV === 'production' ? 'warn' : 'info');
+
+  assertProductionEnv({ ...result.data, ENABLE_SWAGGER: enableSwagger });
+
   return {
     ...result.data,
-    ENABLE_SWAGGER: result.data.ENABLE_SWAGGER ?? result.data.NODE_ENV !== 'production',
+    LOG_LEVEL: logLevel,
+    ENABLE_SWAGGER: enableSwagger,
   };
 }
 
