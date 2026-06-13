@@ -24,9 +24,9 @@ export class AuthController {
 
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // For login, tenantId comes from the request body or a tenant lookup
-      const tenantId = req.body.tenantId || req.tenantId;
-      const result = await this.authService.login(tenantId, req.body, {
+      // In multi-tenant login, shopId is provided in request body
+      const shopId = req.body.shopId || req.tenantId;
+      const result = await this.authService.login(shopId, req.body, {
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
       });
@@ -70,6 +70,45 @@ export class AuthController {
   me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       sendSuccess(res, req.user);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  requestPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.authService.requestPasswordReset(req.body);
+      sendSuccess(res, { message: 'If the email matches an active account, a password reset link has been generated and logged.' });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  confirmPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.authService.confirmPasswordReset(req.body);
+      sendSuccess(res, { message: 'Password has been reset successfully.' });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  requestOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.authService.requestOtp(req.body);
+      sendSuccess(res, { message: 'If the phone number matches an active account, an OTP code has been generated and logged.' });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  verifyOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.authService.verifyOtp(req.body, {
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+      sendSuccess(res, result.data);
     } catch (err) {
       next(err);
     }

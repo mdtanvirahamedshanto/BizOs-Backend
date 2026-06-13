@@ -1,53 +1,59 @@
 import jwt from 'jsonwebtoken';
 import { env } from '@/env';
-import { hashPassword, verifyPassword, generateToken } from '@/utils/crypto';
+import { hashPassword, verifyPassword, generateToken, generateOtp } from '@/utils/crypto';
 import { addDuration, isExpired } from '@/utils/date';
+import { redis } from '@/config/redis';
+import { generateSlug } from '@/utils/slug';
+import { AuditService } from '@/services/audit.service';
 
-import { UnauthorizedError } from '@/utils/errors';
+import { UnauthorizedError, NotFoundError } from '@/utils/errors';
 import { success, failure } from '@/types/service';
 import type { ServiceResult } from '@/types/service';
 import type { AuthResult, AuthTokens } from '@/types/auth.types';
 import type { AuthRepository } from '@/repositories/auth.repository';
 import { authEvents } from '@/events/auth.events';
 import { createModuleLogger } from '@/config/logger';
-import type { RegisterDTO, LoginDTO, ChangePasswordDTO } from '@/validators/auth.schema';
+import type {
+  RegisterDTO,
+  LoginDTO,
+  ChangePasswordDTO,
+  PasswordResetRequestDTO,
+  PasswordResetConfirmDTO,
+  OtpRequestDTO,
+  OtpVerifyDTO,
+} from '@/validators/auth.schema';
 
 const log = createModuleLogger('auth');
 
 export class AuthService {
-  constructor(
-    private authRepo: AuthRepository,
-    // tenantService removed for now, we will add shopService later
-  ) {}
+  constructor(private authRepo: AuthRepository) {}
 
   async register(dto: RegisterDTO): Promise<ServiceResult<AuthResult>> {
-    // TODO: Create shop using ShopService once implemented.
-    // For now, we mock the shop creation to just return a dummy failure
-    // so it compiles, but in reality this will call shopService.create()
-    const shop = { id: 'temp-shop-id' }; // Placeholder
-
-    const existingUser = await this.authRepo.findUserByEmail(shop.id, dto.email);
-    if (existingUser) {
-      return failure('USER_EXISTS', 'A user with this email already exists');
-    }
-
+    const slug = generateSlug(dto.shopName);
     const passwordHash = await hashPassword(dto.password);
-    const user = await this.authRepo.createUser({
-      shopId: shop.id,
-      email: dto.email,
-      passwordHash,
-      name: dto.name,
-    });
 
-    const ownerRole = await this.authRepo.findDefaultRole(shop.id, 'Owner');
-    if (ownerRole) {
-      await this.authRepo.assignRoleToUser(user.id, ownerRole.id);
-    }
+    // Call transactional registration helper in repository
+    const { shop, user } = await this.authRepo.registerShopAndOwner(
+      { name: dto.shopName, slug },
+      { email: dto.email, passwordHash, name: dto.name },
+    );
 
-    const permissions = ownerRole ? [] /* we would fetch permissions from ownerRole.rolePermissions */ : [];
+    // Permissions for the owner role
+    const permissions: string[] = ['*:*:*'];
     const tokens = await this.generateTokens(user.id, shop.id, user.email, permissions);
 
+    // Trigger events
     authEvents.userRegistered({ shopId: shop.id, userId: user.id, email: user.email });
+
+    // Write audit log
+    await AuditService.log({
+      shopId: shop.id,
+      userId: user.id,
+      action: 'auth.register',
+      entity: 'shops',
+      entityId: shop.id,
+      metadata: { email: user.email, shopName: shop.name },
+    });
 
     log.info({ userId: user.id, shopId: shop.id }, 'User registered');
 
@@ -84,18 +90,34 @@ export class AuthService {
     }
 
     // Extract permissions
-    const permissions = user.userRoles.flatMap((ur: any) => 
+    const permissions = user.userRoles.flatMap((ur: any) =>
       ur.role.rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.resource}:${rp.permission.action}`)
     );
 
-    const tokens = await this.generateTokens(user.id, shopId, user.email, permissions);
+    // Default to wildcard if it's the owner role and permissions are empty (just seeded)
+    const hasOwnerRole = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
+    const activePermissions = permissions.length === 0 && hasOwnerRole ? ['*:*:*'] : permissions;
+
+    const tokens = await this.generateTokens(user.id, shopId, user.email, activePermissions);
 
     await this.authRepo.updateLastLogin(user.id);
 
+    // Trigger events
     authEvents.userLogin({
       shopId,
       userId: user.id,
       email: user.email,
+      ipAddress: meta?.ipAddress,
+      userAgent: meta?.userAgent,
+    });
+
+    // Write audit log
+    await AuditService.log({
+      shopId,
+      userId: user.id,
+      action: 'auth.login',
+      entity: 'users',
+      entityId: user.id,
       ipAddress: meta?.ipAddress,
       userAgent: meta?.userAgent,
     });
@@ -108,7 +130,7 @@ export class AuthService {
         shopId,
         email: user.email,
         name: user.name,
-        permissions,
+        permissions: activePermissions,
       },
       tokens,
     });
@@ -128,30 +150,44 @@ export class AuthService {
       throw new UnauthorizedError('User not found');
     }
 
-    const permissions = user.userRoles.flatMap((ur: any) => 
+    const permissions = user.userRoles.flatMap((ur: any) =>
       ur.role.rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.resource}:${rp.permission.action}`)
     );
+
+    const hasOwnerRole = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
+    const activePermissions = permissions.length === 0 && hasOwnerRole ? ['*:*:*'] : permissions;
 
     const tokens = await this.generateTokens(
       user.id,
       user.shopId,
       user.email,
-      permissions,
+      activePermissions,
     );
 
     return success(tokens);
   }
 
   async logout(userId: string, refreshTokenValue?: string): Promise<void> {
+    const user = await this.authRepo.findUserById(userId);
+
     if (refreshTokenValue) {
       await this.authRepo.revokeRefreshToken(refreshTokenValue);
     } else {
       await this.authRepo.revokeAllUserTokens(userId);
     }
 
-    const user = await this.authRepo.findUserById(userId);
     if (user) {
+      // Trigger events
       authEvents.userLogout({ shopId: user.shopId, userId });
+
+      // Write audit log
+      await AuditService.log({
+        shopId: user.shopId,
+        userId,
+        action: 'auth.logout',
+        entity: 'users',
+        entityId: userId,
+      });
     }
   }
 
@@ -171,12 +207,195 @@ export class AuthService {
 
     const newHash = await hashPassword(dto.newPassword);
     await this.authRepo.updatePassword(userId, newHash);
-
     await this.authRepo.revokeAllUserTokens(userId);
+
+    // Write audit log
+    await AuditService.log({
+      shopId: user.shopId,
+      userId,
+      action: 'auth.change_password',
+      entity: 'users',
+      entityId: userId,
+    });
 
     log.info({ userId }, 'Password changed');
 
     return success(undefined);
+  }
+
+  async requestPasswordReset(dto: PasswordResetRequestDTO): Promise<ServiceResult<void>> {
+    const user = await this.authRepo.findUserByEmail(dto.shopId, dto.email);
+    if (!user) {
+      // We return success to prevent user enumeration attacks, but warn log it
+      log.warn({ email: dto.email, shopId: dto.shopId }, 'Password reset requested for non-existent user');
+      return success(undefined);
+    }
+
+    const token = generateToken(32);
+    const redisKey = `auth:password-reset:${token}`;
+    // Expire reset token after 1 hour (3600s)
+    await redis.set(redisKey, user.id, 'EX', 3600);
+
+    // Simulate sending email by logging
+    log.info(
+      { email: user.email, shopId: dto.shopId, resetToken: token },
+      `[SIMULATED EMAIL] Password reset token generated. URL: ${env.APP_URL}/api/v1/auth/password-reset/confirm?token=${token}`
+    );
+
+    // Write audit log
+    await AuditService.log({
+      shopId: dto.shopId,
+      userId: user.id,
+      action: 'auth.password_reset_requested',
+      entity: 'users',
+      entityId: user.id,
+      metadata: { email: user.email },
+    });
+
+    return success(undefined);
+  }
+
+  async confirmPasswordReset(dto: PasswordResetConfirmDTO): Promise<ServiceResult<void>> {
+    const redisKey = `auth:password-reset:${dto.token}`;
+    const userId = await redis.get(redisKey);
+
+    if (!userId) {
+      throw new UnauthorizedError('Invalid or expired reset token');
+    }
+
+    const user = await this.authRepo.findUserById(userId);
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    const passwordHash = await hashPassword(dto.newPassword);
+    await this.authRepo.updatePassword(userId, passwordHash);
+    await this.authRepo.revokeAllUserTokens(userId);
+
+    // Remove token
+    await redis.del(redisKey);
+
+    // Write audit log
+    await AuditService.log({
+      shopId: user.shopId,
+      userId: user.id,
+      action: 'auth.password_reset_confirmed',
+      entity: 'users',
+      entityId: user.id,
+    });
+
+    log.info({ userId }, 'Password reset confirmed');
+
+    return success(undefined);
+  }
+
+  async requestOtp(dto: OtpRequestDTO): Promise<ServiceResult<void>> {
+    const user = await this.authRepo.findUserByPhone(dto.shopId, dto.phone);
+    if (!user) {
+      throw new NotFoundError('User with this phone number');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedError('User account is not active');
+    }
+
+    const otp = generateOtp(6);
+    const redisKey = `auth:otp:${dto.shopId}:${dto.phone}`;
+    const attemptsKey = `auth:otp-attempts:${dto.shopId}:${dto.phone}`;
+
+    // Expire OTP in 5 minutes (300s)
+    await redis.set(redisKey, otp, 'EX', 300);
+    await redis.set(attemptsKey, '0', 'EX', 300);
+
+    // Simulate sending SMS by logging
+    log.info(
+      { phone: dto.phone, shopId: dto.shopId, otp },
+      `[SIMULATED SMS] OTP code generated. OTP: ${otp}`
+    );
+
+    // Write audit log
+    await AuditService.log({
+      shopId: dto.shopId,
+      userId: user.id,
+      action: 'auth.otp_requested',
+      entity: 'users',
+      entityId: user.id,
+      metadata: { phone: dto.phone },
+    });
+
+    return success(undefined);
+  }
+
+  async verifyOtp(
+    dto: OtpVerifyDTO,
+    meta?: { ipAddress?: string; userAgent?: string },
+  ): Promise<ServiceResult<AuthResult>> {
+    const user = await this.authRepo.findUserByPhone(dto.shopId, dto.phone);
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedError('User account is not active');
+    }
+
+    const redisKey = `auth:otp:${dto.shopId}:${dto.phone}`;
+    const attemptsKey = `auth:otp-attempts:${dto.shopId}:${dto.phone}`;
+
+    const attempts = await redis.get(attemptsKey);
+    if (attempts && parseInt(attempts, 10) >= 3) {
+      throw new UnauthorizedError('Too many failed OTP verification attempts. Please request a new OTP.');
+    }
+
+    const storedOtp = await redis.get(redisKey);
+    if (!storedOtp) {
+      throw new UnauthorizedError('OTP has expired or is invalid');
+    }
+
+    if (storedOtp !== dto.otp) {
+      await redis.incr(attemptsKey);
+      throw new UnauthorizedError('Invalid OTP code');
+    }
+
+    // Success! Clear Redis OTP data
+    await redis.del(redisKey);
+    await redis.del(attemptsKey);
+
+    // Extract permissions
+    const permissions = user.userRoles.flatMap((ur: any) =>
+      ur.role.rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.resource}:${rp.permission.action}`)
+    );
+
+    const hasOwnerRole = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
+    const activePermissions = permissions.length === 0 && hasOwnerRole ? ['*:*:*'] : permissions;
+
+    const tokens = await this.generateTokens(user.id, dto.shopId, user.email, activePermissions);
+
+    await this.authRepo.updateLastLogin(user.id);
+
+    // Write audit log
+    await AuditService.log({
+      shopId: dto.shopId,
+      userId: user.id,
+      action: 'auth.otp_login',
+      entity: 'users',
+      entityId: user.id,
+      ipAddress: meta?.ipAddress,
+      userAgent: meta?.userAgent,
+    });
+
+    log.info({ userId: user.id, shopId: dto.shopId }, 'User logged in via OTP');
+
+    return success({
+      user: {
+        id: user.id,
+        shopId: dto.shopId,
+        email: user.email,
+        name: user.name,
+        permissions: activePermissions,
+      },
+      tokens,
+    });
   }
 
   private async generateTokens(
@@ -192,7 +411,6 @@ export class AuthService {
       permissions,
     };
 
-    // Need to cast the expiresIn value to avoid TS errors
     const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, {
       expiresIn: env.JWT_ACCESS_EXPIRY as any,
     });
@@ -211,7 +429,7 @@ export class AuthService {
 
   private parseExpiryToSeconds(expiry: string): number {
     const match = expiry.match(/^(\d+)(s|m|h|d)$/);
-    if (!match) return 900; 
+    if (!match) return 900;
     const value = parseInt(match[1]!, 10);
     const unit = match[2];
     const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };

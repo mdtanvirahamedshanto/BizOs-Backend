@@ -3,15 +3,6 @@ import jwt from 'jsonwebtoken';
 import { env } from '@/env';
 import { UnauthorizedError } from '@/utils/errors';
 
-interface JwtPayload {
-  sub: string;       // userId
-  tenantId: string;
-  email: string;
-  permissions: string[];
-  iat: number;
-  exp: number;
-}
-
 /**
  * Authentication middleware.
  * Verifies JWT access token from Authorization header.
@@ -28,11 +19,13 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
 
     const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload;
+    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
+    const shopId = decoded.shopId || decoded.tenantId;
 
     req.user = {
       id: decoded.sub,
-      tenantId: decoded.tenantId,
+      tenantId: shopId,
+      shopId: shopId,
       email: decoded.email,
       permissions: decoded.permissions,
     };

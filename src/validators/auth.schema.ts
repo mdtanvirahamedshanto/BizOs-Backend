@@ -29,3 +29,34 @@ export type RegisterDTO = z.infer<typeof registerSchema>;
 export type LoginDTO = z.infer<typeof loginSchema>;
 export type RefreshTokenDTO = z.infer<typeof refreshTokenSchema>;
 export type ChangePasswordDTO = z.infer<typeof changePasswordSchema>;
+
+/** Request password reset link */
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  shopId: z.string().uuid('Invalid shop ID format'),
+});
+
+/** Confirm password reset with token */
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+/** Request OTP login */
+export const otpRequestSchema = z.object({
+  phone: z.string().min(10, 'Invalid phone number format').max(15),
+  shopId: z.string().uuid('Invalid shop ID format'),
+});
+
+/** Verify OTP and complete login */
+export const otpVerifySchema = z.object({
+  phone: z.string().min(10, 'Invalid phone number format').max(15),
+  shopId: z.string().uuid('Invalid shop ID format'),
+  otp: z.string().length(6, 'OTP must be exactly 6 digits'),
+});
+
+export type PasswordResetRequestDTO = z.infer<typeof passwordResetRequestSchema>;
+export type PasswordResetConfirmDTO = z.infer<typeof passwordResetConfirmSchema>;
+export type OtpRequestDTO = z.infer<typeof otpRequestSchema>;
+export type OtpVerifyDTO = z.infer<typeof otpVerifySchema>;
+

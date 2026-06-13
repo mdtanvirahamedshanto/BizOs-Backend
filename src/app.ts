@@ -5,9 +5,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 
 import { env } from '@/env';
-import { logger } from '@/config/logger';
-import { errorHandler } from '@/middlewares/errorHandler';
-import { rateLimiter } from '@/middlewares/rateLimiter';
+import { errorHandler, requestLogger, rateLimiter } from '@/middlewares';
 
 // Import Routes
 import apiRouter from '@/routes';
@@ -24,14 +22,7 @@ app.use(cookieParser());
 app.use(rateLimiter);
 
 // ─── Request Logging ──────────────────────────────────────
-app.use((req, _res, next) => {
-  logger.info({
-    method: req.method,
-    url: req.url,
-    ip: req.ip,
-  }, 'Incoming request');
-  next();
-});
+app.use(requestLogger);
 
 // ─── Routes ───────────────────────────────────────────────
 // Health Check

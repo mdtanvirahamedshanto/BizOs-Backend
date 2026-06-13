@@ -54,6 +54,32 @@ export const winstonLogger = winston.createLogger({
   ],
 });
 
+// Dedicated Audit Logger
+export const auditLogger = winston.createLogger({
+  level: 'info',
+  format: combine(
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    json(),
+  ),
+  defaultMeta: { service: 'bizos-backend', type: 'audit' },
+  transports: [
+    new winston.transports.Console({
+      format: isProd 
+        ? combine(timestamp(), json()) 
+        : combine(colorize(), timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), consoleFormat),
+    }),
+    // Daily rotate file for audit logs (longer retention for compliance)
+    new DailyRotateFile({
+      filename: 'logs/audit-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '90d',
+      level: 'info',
+    }),
+  ],
+});
+
 /**
  * Wrapper to maintain compatibility with Pino's `logger.info({ obj }, 'msg')` signature
  * while using Winston under the hood.
@@ -107,6 +133,10 @@ export class LoggerWrapper {
   debug(...args: any[]) {
     const [msg, meta] = this.formatArgs(args);
     winstonLogger.debug(msg, meta);
+  }
+
+  audit(action: string, meta: Record<string, any>) {
+    auditLogger.info(action, { ...this.getBaseMeta(), ...meta });
   }
 }
 

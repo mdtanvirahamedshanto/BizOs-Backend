@@ -14,11 +14,13 @@ import { UnauthorizedError } from '@/utils/errors';
  * - No user input can override the tenantId
  */
 export function tenantContext(req: Request, _res: Response, next: NextFunction): void {
-  if (!req.user?.tenantId) {
+  const shopId = req.user?.shopId || req.user?.tenantId;
+  if (!shopId) {
     next(new UnauthorizedError('Tenant context not available. Authentication required.'));
     return;
   }
 
-  req.tenantId = req.user.tenantId;
+  req.tenantId = shopId;
+  req.shopId = shopId;
   next();
 }

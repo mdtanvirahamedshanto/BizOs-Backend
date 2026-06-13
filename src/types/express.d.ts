@@ -9,12 +9,14 @@ declare global {
       user?: {
         id: string;
         tenantId: string;
+        shopId: string;
         email: string;
         permissions: string[];
       };
 
-      /** Tenant ID — set by tenantContext middleware */
+      /** Tenant/Shop ID — set by tenantContext middleware */
       tenantId?: string;
+      shopId?: string;
 
       /** Unique request correlation ID — set by requestId middleware */
       requestId?: string;

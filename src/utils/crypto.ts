@@ -1,24 +1,18 @@
-import argon2 from 'argon2';
+import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 
 /**
- * Hash a password using Argon2id.
- * Argon2id is the recommended algorithm for password hashing (OWASP).
+ * Hash a password using bcrypt.
  */
 export async function hashPassword(password: string): Promise<string> {
-  return argon2.hash(password, {
-    type: argon2.argon2id,
-    memoryCost: 65536,  // 64 MB
-    timeCost: 3,
-    parallelism: 4,
-  });
+  return bcrypt.hash(password, 10);
 }
 
 /**
- * Verify a password against an Argon2id hash.
+ * Verify a password against a bcrypt hash.
  */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return argon2.verify(hash, password);
+  return bcrypt.compare(password, hash);
 }
 
 /**
