@@ -52,6 +52,7 @@ async function main() {
     { module: 'mfs', resource: 'flexiload', action: 'read', description: 'Read Flexiload accounts and recharges' },
     { module: 'mfs', resource: 'flexiload', action: 'write', description: 'Create Flexiload accounts and perform recharges' },
     { module: 'mfs', resource: 'flexiload', action: 'update', description: 'Update Flexiload accounts' },
+    { module: 'reports', resource: 'reports', action: 'read', description: 'Read reports and dashboard metrics' },
   ];
 
   const seededPermissions = [];
