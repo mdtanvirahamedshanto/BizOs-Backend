@@ -21,6 +21,9 @@ async function main() {
     { module: 'crm', resource: 'suppliers', action: 'delete', description: 'Delete suppliers' },
     { module: 'sales', resource: 'sales', action: 'create', description: 'Create sales' },
     { module: 'sales', resource: 'sales', action: 'read', description: 'Read sales' },
+    { module: 'sales', resource: 'sales', action: 'update', description: 'Update sales' },
+    { module: 'sales', resource: 'sales', action: 'delete', description: 'Delete sales' },
+    { module: 'sales', resource: 'sales', action: 'return', description: 'Process sales returns' },
   ];
 
   const seededPermissions = [];
