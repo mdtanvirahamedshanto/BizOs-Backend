@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '@/services/auth.service';
 import { sendSuccess, sendCreated, sendNoContent } from '@/utils/response';
+import { setCsrfToken } from '@/middlewares';
 
 /**
  * Auth controller.
@@ -109,6 +110,15 @@ export class AuthController {
         userAgent: req.headers['user-agent'],
       });
       sendSuccess(res, result.data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getCsrfToken = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const token = setCsrfToken(res);
+      sendSuccess(res, { csrfToken: token });
     } catch (err) {
       next(err);
     }

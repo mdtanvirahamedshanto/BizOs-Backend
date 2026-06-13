@@ -23,6 +23,7 @@ const authService = new AuthService(authRepo);
 const authController = new AuthController(authService);
 
 // Registration & Login
+router.get('/csrf', authController.getCsrfToken);
 router.post('/register', strictRateLimiter(10, 15 * 60 * 1000), validate(registerSchema), authController.register);
 router.post('/login', strictRateLimiter(10, 15 * 60 * 1000), validate(loginSchema), authController.login);
 router.post('/refresh', validate(refreshTokenSchema), authController.refreshToken);

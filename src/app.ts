@@ -4,8 +4,8 @@ import cors from 'cors';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 
-import { env } from '@/env';
-import { errorHandler, requestLogger, rateLimiter } from '@/middlewares';
+import { corsOptions } from '@/config/cors';
+import { errorHandler, requestLogger, rateLimiter, xssSanitizer, csrfProtection } from '@/middlewares';
 
 // Import Routes
 import apiRouter from '@/routes';
@@ -13,16 +13,32 @@ import apiRouter from '@/routes';
 const app = express();
 
 // ─── Security & Utility Middlewares ───────────────────────
-app.use(helmet());
-app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      sandbox: ['allow-forms', 'allow-same-origin', 'allow-scripts'],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+  frameguard: { action: 'deny' },
+}));
+app.use(cors(corsOptions));
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(rateLimiter);
 
 // ─── Request Logging ──────────────────────────────────────
 app.use(requestLogger);
+app.use(rateLimiter);
+app.use(xssSanitizer);
+app.use(csrfProtection);
 
 // ─── Routes ───────────────────────────────────────────────
 // Health Check
