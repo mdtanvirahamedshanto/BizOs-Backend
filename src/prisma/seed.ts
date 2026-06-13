@@ -53,6 +53,8 @@ async function main() {
     { module: 'mfs', resource: 'flexiload', action: 'write', description: 'Create Flexiload accounts and perform recharges' },
     { module: 'mfs', resource: 'flexiload', action: 'update', description: 'Update Flexiload accounts' },
     { module: 'reports', resource: 'reports', action: 'read', description: 'Read reports and dashboard metrics' },
+    { module: 'integrations', resource: 'telegram', action: 'read', description: 'View Telegram link status' },
+    { module: 'integrations', resource: 'telegram', action: 'write', description: 'Link and unlink Telegram account' },
   ];
 
   const seededPermissions = [];

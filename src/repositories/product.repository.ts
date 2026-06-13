@@ -218,4 +218,28 @@ export class ProductRepository {
     });
     return result.map((r) => r.unit).filter(Boolean);
   }
+
+  async findOrCreateQuickSaleProduct(shopId: string) {
+    const existing = await this.prisma.product.findFirst({
+      where: { shopId, sku: 'QUICK-SALE', deletedAt: null },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.product.create({
+      data: {
+        shopId,
+        name: 'Quick Sale',
+        slug: 'quick-sale',
+        sku: 'QUICK-SALE',
+        sellPriceCents: 0,
+        costPriceCents: 0,
+        stockQuantity: 999_999,
+        lowStockThreshold: 0,
+        isActive: true,
+      },
+    });
+  }
 }

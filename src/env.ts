@@ -74,6 +74,11 @@ const envSchema = z.object({
   PAYMENT_PROVIDER: z.string().optional(),
   PAYMENT_SECRET_KEY: z.string().optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),
+
+  // Telegram
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_BOT_USERNAME: z.string().optional(),
+  TELEGRAM_LINK_TTL_SEC: z.coerce.number().default(900),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -24,6 +24,29 @@ export class CustomerRepository {
     });
   }
 
+  async findBestMatchByName(shopId: string, name: string) {
+    const exact = await this.prisma.customer.findFirst({
+      where: {
+        shopId,
+        deletedAt: null,
+        name: { equals: name, mode: 'insensitive' },
+      },
+    });
+
+    if (exact) {
+      return exact;
+    }
+
+    return this.prisma.customer.findFirst({
+      where: {
+        shopId,
+        deletedAt: null,
+        name: { contains: name, mode: 'insensitive' },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
   async update(_shopId: string, id: string, data: any) {
     return this.prisma.customer.update({
       where: { id },

@@ -15,6 +15,7 @@ import { cashbookRoutes } from './cashbook.routes';
 import { mfsRoutes } from './mfs.routes';
 import { flexiloadRoutes } from './flexiload.routes';
 import { reportsRoutes } from './reports.routes';
+import { telegramRoutes } from './telegram.routes';
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.use('/cashbook', cashbookRoutes);
 router.use('/mfs', mfsRoutes);
 router.use('/flexiload', flexiloadRoutes);
 router.use('/reports', reportsRoutes);
+router.use('/telegram', telegramRoutes);
 
 // Example route for now
 router.get('/status', (_req, res) => {

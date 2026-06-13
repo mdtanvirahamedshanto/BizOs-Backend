@@ -317,4 +317,24 @@ export class KhataRepository {
       netReceivableCents: totalReceivableCents - totalPayableCents,
     };
   }
+
+  async findOrCreateCustomerAccount(shopId: string, customerId: string) {
+    const existing = await this.prisma.khataAccount.findFirst({
+      where: { shopId, partyType: 'CUSTOMER', partyId: customerId },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.khataAccount.create({
+      data: {
+        shopId,
+        partyType: 'CUSTOMER',
+        partyId: customerId,
+        balanceCents: 0,
+        creditLimitCents: 0,
+      },
+    });
+  }
 }
