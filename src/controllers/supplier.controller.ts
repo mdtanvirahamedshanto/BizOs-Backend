@@ -82,4 +82,26 @@ export class SupplierController {
       next(err);
     }
   };
+
+  getSupplierLedger = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.shopId!;
+      const supplierId = req.params.id as string;
+      const result = await this.supplierService.getSupplierLedger(shopId, supplierId, req.query as any);
+      sendSuccess(res, result.data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getSupplierPayments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.shopId!;
+      const supplierId = req.params.id as string;
+      const result = await this.supplierService.getSupplierPayments(shopId, supplierId, req.query as any);
+      sendSuccess(res, result.data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

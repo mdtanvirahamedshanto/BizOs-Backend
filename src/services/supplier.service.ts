@@ -166,4 +166,52 @@ export class SupplierService {
       meta,
     });
   }
+
+  async getSupplierLedger(
+    shopId: string,
+    id: string,
+    query: { limit?: number; cursor?: string },
+  ): Promise<ServiceResult<PaginatedResult<any>>> {
+    const supplier = await this.supplierRepo.findById(shopId, id);
+    if (!supplier) {
+      throw new NotFoundError('Supplier');
+    }
+
+    const limit = query.limit || PAGINATION_DEFAULTS.LIMIT;
+    const { data, total } = await this.supplierRepo.findLedgerEntries(shopId, id, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    const meta = buildPaginationMeta(total, limit, data, query.cursor);
+
+    return success({
+      data,
+      meta,
+    });
+  }
+
+  async getSupplierPayments(
+    shopId: string,
+    id: string,
+    query: { limit?: number; cursor?: string },
+  ): Promise<ServiceResult<PaginatedResult<any>>> {
+    const supplier = await this.supplierRepo.findById(shopId, id);
+    if (!supplier) {
+      throw new NotFoundError('Supplier');
+    }
+
+    const limit = query.limit || PAGINATION_DEFAULTS.LIMIT;
+    const { data, total } = await this.supplierRepo.findPaymentsAndCount(shopId, id, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    const meta = buildPaginationMeta(total, limit, data, query.cursor);
+
+    return success({
+      data,
+      meta,
+    });
+  }
 }

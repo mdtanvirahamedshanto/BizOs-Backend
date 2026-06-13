@@ -130,4 +130,68 @@ export class SupplierRepository {
 
     return { data, total };
   }
+
+  async findLedgerEntries(
+    shopId: string,
+    supplierId: string,
+    options: { limit: number; cursor?: string },
+  ) {
+    const khata = await this.prisma.khataAccount.findFirst({
+      where: { shopId, partyType: 'SUPPLIER', partyId: supplierId },
+    });
+
+    if (!khata) {
+      return { data: [], total: 0 };
+    }
+
+    const whereClause = { shopId, khataAccountId: khata.id };
+    const queryOptions: any = {
+      where: whereClause,
+      take: options.limit,
+      orderBy: { entryDate: 'desc' },
+    };
+
+    if (options.cursor) {
+      queryOptions.cursor = { id: options.cursor };
+      queryOptions.skip = 1;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.khataEntry.findMany(queryOptions),
+      this.prisma.khataEntry.count({ where: whereClause }),
+    ]);
+
+    return { data, total };
+  }
+
+  async findPaymentsAndCount(
+    shopId: string,
+    supplierId: string,
+    options: { limit: number; cursor?: string },
+  ) {
+    const whereClause = {
+      shopId,
+      purchase: {
+        supplierId: supplierId,
+      },
+    };
+
+    const queryOptions: any = {
+      where: whereClause,
+      take: options.limit,
+      orderBy: { paidAt: 'desc' },
+    };
+
+    if (options.cursor) {
+      queryOptions.cursor = { id: options.cursor };
+      queryOptions.skip = 1;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.payment.findMany(queryOptions),
+      this.prisma.payment.count({ where: whereClause }),
+    ]);
+
+    return { data, total };
+  }
 }

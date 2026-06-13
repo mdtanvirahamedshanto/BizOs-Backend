@@ -27,6 +27,11 @@ async function main() {
     { module: 'finance', resource: 'payments', action: 'create', description: 'Create payments' },
     { module: 'finance', resource: 'payments', action: 'read', description: 'Read payments' },
     { module: 'finance', resource: 'payments', action: 'delete', description: 'Delete payments/Refunds' },
+    { module: 'inventory', resource: 'purchases', action: 'create', description: 'Create purchases' },
+    { module: 'inventory', resource: 'purchases', action: 'read', description: 'Read purchases' },
+    { module: 'inventory', resource: 'purchases', action: 'update', description: 'Update purchases' },
+    { module: 'inventory', resource: 'purchases', action: 'delete', description: 'Delete purchases' },
+    { module: 'inventory', resource: 'purchases', action: 'return', description: 'Process purchase returns' },
   ];
 
   const seededPermissions = [];

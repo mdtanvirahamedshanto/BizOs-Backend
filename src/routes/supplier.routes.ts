@@ -25,5 +25,7 @@ router.delete('/:id', authorize('suppliers.delete'), supplierController.deleteSu
 
 router.get('/:id/due-tracking', authorize('suppliers.read'), supplierController.getDueTracking);
 router.get('/:id/purchases', authorize('suppliers.read'), supplierController.getPurchaseHistory);
+router.get('/:id/ledger', authorize('suppliers.read'), supplierController.getSupplierLedger);
+router.get('/:id/payments', authorize('suppliers.read'), supplierController.getSupplierPayments);
 
 export const supplierRoutes = router;
