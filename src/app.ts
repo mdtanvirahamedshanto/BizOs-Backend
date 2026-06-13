@@ -16,7 +16,7 @@ const app = express();
 
 // ─── Security & Utility Middlewares ───────────────────────
 app.use(helmet());
-app.use(cors({ origin: env.APP_URL, credentials: true }));
+app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

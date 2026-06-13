@@ -1,4 +1,15 @@
 import { z } from 'zod';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Determine the current environment before loading .env file
+const nodeEnv = process.env.NODE_ENV || 'development';
+
+// Load environment-specific .env file (e.g., .env.development)
+// Fallback to generic .env if specific file doesn't exist
+dotenv.config({ path: path.resolve(process.cwd(), `.env.${nodeEnv}`) });
+// Also load the default .env as a fallback for shared variables
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /**
  * Environment variable schema validation.
@@ -7,11 +18,12 @@ import { z } from 'zod';
  */
 const envSchema = z.object({
   // Application
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(['development', 'staging', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3000),
   API_PREFIX: z.string().default('/api/v1'),
   APP_NAME: z.string().default('BizOS'),
   APP_URL: z.string().url().default('http://localhost:3000'),
+  FRONTEND_URL: z.string().url().default('http://localhost:3001'),
 
   // Database
   DATABASE_URL: z.string().url(),
