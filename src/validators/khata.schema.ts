@@ -49,8 +49,14 @@ export const khataAdjustmentSchema = z.object({
   description: z.string().min(1, 'Description is required').max(500),
 });
 
+export const ensureKhataAccountSchema = z.object({
+  partyType: z.enum(['CUSTOMER', 'SUPPLIER']),
+  partyId: z.string().uuid('Invalid party ID'),
+});
+
 export type KhataQueryDTO = z.infer<typeof khataQuerySchema>;
 export type KhataEntryQueryDTO = z.infer<typeof khataEntryQuerySchema>;
 export type CreateCollectionDTO = z.infer<typeof createCollectionSchema>;
 export type CreateRepaymentDTO = z.infer<typeof createRepaymentSchema>;
 export type KhataAdjustmentDTO = z.infer<typeof khataAdjustmentSchema>;
+export type EnsureKhataAccountDTO = z.infer<typeof ensureKhataAccountSchema>;

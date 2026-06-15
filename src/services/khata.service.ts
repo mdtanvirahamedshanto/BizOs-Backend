@@ -11,6 +11,7 @@ import type {
   CreateCollectionDTO,
   CreateRepaymentDTO,
   KhataAdjustmentDTO,
+  EnsureKhataAccountDTO,
 } from '@/validators/khata.schema';
 import { AuditService } from './audit.service';
 import { khataEvents } from '@/events/khata.events';
@@ -173,5 +174,10 @@ export class KhataService {
   async getDueSummary(shopId: string): Promise<ServiceResult<any>> {
     const summary = await this.khataRepo.getDueSummary(shopId);
     return success(summary);
+  }
+
+  async ensureAccount(shopId: string, dto: EnsureKhataAccountDTO): Promise<ServiceResult<any>> {
+    const account = await this.khataRepo.ensureAccount(shopId, dto.partyType, dto.partyId);
+    return success(account);
   }
 }

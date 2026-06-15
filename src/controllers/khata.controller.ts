@@ -82,4 +82,14 @@ export class KhataController {
       next(err);
     }
   };
+
+  ensureAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.shopId!;
+      const result = await this.khataService.ensureAccount(shopId, req.body);
+      sendSuccess(res, result.data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

@@ -13,6 +13,7 @@ import {
   createCollectionSchema,
   createRepaymentSchema,
   khataAdjustmentSchema,
+  ensureKhataAccountSchema,
 } from '@/validators/khata.schema';
 
 const router = Router();
@@ -25,6 +26,8 @@ router.use(tenantContext);
 
 // Specific summary route first to avoid /accounts/:id parameter matching collisions
 router.get('/due-summary', authorize('khata.read'), khataController.getDueSummary);
+
+router.post('/accounts/ensure', authorize('khata.write'), validate(ensureKhataAccountSchema), khataController.ensureAccount);
 
 router.get('/accounts', authorize('khata.read'), validate(khataQuerySchema, 'query'), khataController.listAccounts);
 router.get('/accounts/:id', authorize('khata.read'), khataController.getAccount);

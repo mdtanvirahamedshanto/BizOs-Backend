@@ -337,4 +337,31 @@ export class KhataRepository {
       },
     });
   }
+
+  async findOrCreateSupplierAccount(shopId: string, supplierId: string) {
+    const existing = await this.prisma.khataAccount.findFirst({
+      where: { shopId, partyType: 'SUPPLIER', partyId: supplierId },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.khataAccount.create({
+      data: {
+        shopId,
+        partyType: 'SUPPLIER',
+        partyId: supplierId,
+        balanceCents: 0,
+        creditLimitCents: 0,
+      },
+    });
+  }
+
+  async ensureAccount(shopId: string, partyType: 'CUSTOMER' | 'SUPPLIER', partyId: string) {
+    if (partyType === 'CUSTOMER') {
+      return this.findOrCreateCustomerAccount(shopId, partyId);
+    }
+    return this.findOrCreateSupplierAccount(shopId, partyId);
+  }
 }
