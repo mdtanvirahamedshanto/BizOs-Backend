@@ -112,4 +112,66 @@ export class TelegramRepository {
       },
     });
   }
+
+  async listMessages(
+    shopId: string,
+    params: { limit?: number; offset?: number; status?: 'PENDING' | 'SENT' | 'FAILED' },
+  ) {
+    return this.prisma.telegramMessage.findMany({
+      where: {
+        shopId,
+        ...(params.status ? { status: params.status } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: params.limit ?? 50,
+      skip: params.offset ?? 0,
+      include: {
+        telegramLink: {
+          select: { telegramUsername: true, telegramChatId: true },
+        },
+      },
+    });
+  }
+
+  async countMessages(shopId: string, status?: 'PENDING' | 'SENT' | 'FAILED') {
+    return this.prisma.telegramMessage.count({
+      where: {
+        shopId,
+        ...(status ? { status } : {}),
+      },
+    });
+  }
+
+  async countActiveLinks(shopId: string) {
+    return this.prisma.telegramLink.count({
+      where: { shopId, isActive: true },
+    });
+  }
+
+  async getMessagesSince(shopId: string, since: Date) {
+    return this.prisma.telegramMessage.findMany({
+      where: { shopId, createdAt: { gte: since } },
+      select: { status: true, createdAt: true, messageText: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getNotificationPrefs(telegramLinkId: string) {
+    return this.prisma.telegramNotificationPref.findMany({
+      where: { telegramLinkId },
+    });
+  }
+
+  async upsertNotificationPref(telegramLinkId: string, eventType: string, isEnabled: boolean) {
+    return this.prisma.telegramNotificationPref.upsert({
+      where: {
+        telegramLinkId_eventType: {
+          telegramLinkId,
+          eventType,
+        },
+      },
+      update: { isEnabled },
+      create: { telegramLinkId, eventType, isEnabled },
+    });
+  }
 }

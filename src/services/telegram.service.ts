@@ -190,4 +190,226 @@ export class TelegramService {
   parseEntry(text: string): ParsedEntry | null {
     return parseNaturalLanguageEntry(text);
   }
+
+  async getIntegrationStatus(shopId: string, userId: string): Promise<ServiceResult<unknown>> {
+    const link = await this.telegramRepo.findLinkByShopUser(shopId, userId);
+    const prefs = link ? await this.telegramRepo.getNotificationPrefs(link.id) : [];
+
+    const prefMap = Object.fromEntries(prefs.map((p) => [p.eventType, p.isEnabled]));
+
+    return success({
+      account: link
+        ? {
+            connected: true,
+            username: link.telegramUsername ?? undefined,
+            userId: link.telegramChatId.toString(),
+            linkedAt: link.linkedAt,
+          }
+        : { connected: false },
+      bot: {
+        connected: Boolean(env.TELEGRAM_BOT_TOKEN),
+        botUsername: env.TELEGRAM_BOT_USERNAME,
+        botName: 'BizOS Assistant',
+        settings: {
+          sendDailyReport: prefMap['report.daily'] ?? true,
+          sendLowStockAlert: prefMap['inventory.low_stock'] ?? true,
+          sendDueNotification: prefMap['khata.overdue'] ?? false,
+        },
+      },
+    });
+  }
+
+  async listActivityLogs(
+    shopId: string,
+    params: { limit?: number; offset?: number; status?: 'success' | 'failed' },
+  ): Promise<ServiceResult<unknown>> {
+    const statusMap = { success: 'SENT' as const, failed: 'FAILED' as const };
+    const rows = await this.telegramRepo.listMessages(shopId, {
+      limit: params.limit,
+      offset: params.offset,
+      status: params.status ? statusMap[params.status] : undefined,
+    });
+
+    return success(
+      rows.map((row) => ({
+        id: row.id,
+        chatId: row.chatId.toString(),
+        userTelegram: row.telegramLink.telegramUsername
+          ? `@${row.telegramLink.telegramUsername}`
+          : row.chatId.toString(),
+        incomingText: row.messageText,
+        outgoingText: row.status === 'SENT' ? 'Processed successfully' : row.error ?? 'Failed',
+        status: row.status === 'SENT' ? 'success' : 'failed',
+        timestamp: (row.sentAt ?? row.createdAt).toISOString(),
+      })),
+    );
+  }
+
+  async getActivityStats(shopId: string): Promise<ServiceResult<unknown>> {
+    const since = new Date();
+    since.setDate(since.getDate() - 6);
+    since.setHours(0, 0, 0, 0);
+
+    const [total, sent, failed, activeUsers, recent] = await Promise.all([
+      this.telegramRepo.countMessages(shopId),
+      this.telegramRepo.countMessages(shopId, 'SENT'),
+      this.telegramRepo.countMessages(shopId, 'FAILED'),
+      this.telegramRepo.countActiveLinks(shopId),
+      this.telegramRepo.getMessagesSince(shopId, since),
+    ]);
+
+    const dayBuckets = new Map<string, { sent: number; received: number }>();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(since);
+      d.setDate(since.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      dayBuckets.set(key, { sent: 0, received: 0 });
+    }
+
+    for (const msg of recent) {
+      const key = msg.createdAt.toISOString().slice(0, 10);
+      const bucket = dayBuckets.get(key);
+      if (!bucket) continue;
+      bucket.received += 1;
+      if (msg.status === 'SENT') bucket.sent += 1;
+    }
+
+    const commandCounts = new Map<string, number>();
+    for (const msg of recent) {
+      const text = msg.messageText.trim();
+      const cmd = text.startsWith('/') ? text.split(/\s+/)[0] : 'nlp';
+      commandCounts.set(cmd, (commandCounts.get(cmd) ?? 0) + 1);
+    }
+
+    return success({
+      totalCommandsProcessed: total,
+      activeUsersCount: activeUsers,
+      commandsUsage: [...commandCounts.entries()]
+        .map(([command, count]) => ({ command, count }))
+        .sort((a, b) => b.count - a.count),
+      trafficChart: [...dayBuckets.entries()].map(([iso, counts]) => ({
+        date: iso,
+        sent: counts.sent,
+        received: counts.received,
+      })),
+      successRate: total > 0 ? Math.round((sent / total) * 100) : 0,
+      failedCount: failed,
+    });
+  }
+
+  getBotCommands(): ServiceResult<unknown> {
+    return success([
+      {
+        key: 'start',
+        command: '/start',
+        description: 'Link your BizOS shop account using a one-time token',
+        replyTemplate:
+          'Welcome to BizOS Bot.\n\nGenerate a link token from the BizOS app, then send:\n/start YOUR_TOKEN',
+        usageCount: 0,
+        enabled: true,
+      },
+      {
+        key: 'help',
+        command: '/help',
+        description: 'Show available commands and NLP entry examples',
+        replyTemplate: getParserHelpText(),
+        usageCount: 0,
+        enabled: true,
+      },
+      {
+        key: 'status',
+        command: '/status',
+        description: 'Show the linked shop and user for this chat',
+        replyTemplate: 'Linked shop: {shopName}\nLinked user: {userName}',
+        usageCount: 0,
+        enabled: true,
+      },
+      {
+        key: 'unlink',
+        command: '/unlink',
+        description: 'Disconnect Telegram from BizOS',
+        replyTemplate: 'Telegram account unlinked from BizOS.',
+        usageCount: 0,
+        enabled: true,
+      },
+    ]);
+  }
+
+  async updateNotificationPreferences(
+    shopId: string,
+    userId: string,
+    settings: {
+      sendDailyReport?: boolean;
+      sendLowStockAlert?: boolean;
+      sendDueNotification?: boolean;
+    },
+  ): Promise<ServiceResult<unknown>> {
+    const link = await this.telegramRepo.findLinkByShopUser(shopId, userId);
+    if (!link) {
+      throw new NotFoundError('Telegram link');
+    }
+
+    const mapping: Array<[keyof typeof settings, string]> = [
+      ['sendDailyReport', 'report.daily'],
+      ['sendLowStockAlert', 'inventory.low_stock'],
+      ['sendDueNotification', 'khata.overdue'],
+    ];
+
+    for (const [key, eventType] of mapping) {
+      if (settings[key] !== undefined) {
+        await this.telegramRepo.upsertNotificationPref(link.id, eventType, settings[key]!);
+      }
+    }
+
+    return this.getIntegrationStatus(shopId, userId);
+  }
+
+  async sendTestMessage(shopId: string, userId: string): Promise<ServiceResult<boolean>> {
+    if (!env.TELEGRAM_BOT_TOKEN) {
+      return failure('BOT_NOT_CONFIGURED', 'Telegram bot is not configured on the server.');
+    }
+
+    const link = await this.telegramRepo.findLinkByShopUser(shopId, userId);
+    if (!link) {
+      throw new NotFoundError('Telegram link');
+    }
+
+    const text =
+      '✅ BizOS test message delivered successfully. Your Telegram connection is active.';
+
+    const response = await fetch(
+      `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: link.telegramChatId.toString(),
+          text,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      await this.telegramRepo.logMessage({
+        shopId,
+        telegramLinkId: link.id,
+        chatId: link.telegramChatId,
+        messageText: '[test ping]',
+        status: 'FAILED',
+        error: body,
+      });
+      return failure('SEND_FAILED', 'Failed to send test message via Telegram.');
+    }
+
+    await this.telegramRepo.logMessage({
+      shopId,
+      telegramLinkId: link.id,
+      chatId: link.telegramChatId,
+      messageText: '[test ping]',
+      status: 'SENT',
+    });
+
+    return success(true);
+  }
 }

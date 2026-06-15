@@ -28,8 +28,14 @@ const telegramController = new TelegramController(telegramService);
 router.use(authenticate);
 router.use(tenantContext);
 
+router.get('/status', authorize('telegram.read'), telegramController.getIntegrationStatus);
 router.post('/link', authorize('telegram.write'), telegramController.createLinkToken);
 router.get('/link', authorize('telegram.read'), telegramController.getLinkStatus);
 router.delete('/link', authorize('telegram.write'), telegramController.unlinkAccount);
+router.get('/messages', authorize('telegram.read'), telegramController.listActivityLogs);
+router.get('/stats', authorize('telegram.read'), telegramController.getActivityStats);
+router.get('/commands', authorize('telegram.read'), telegramController.getBotCommands);
+router.put('/preferences', authorize('telegram.write'), telegramController.updatePreferences);
+router.post('/test', authorize('telegram.write'), telegramController.sendTestMessage);
 
 export const telegramRoutes = router;

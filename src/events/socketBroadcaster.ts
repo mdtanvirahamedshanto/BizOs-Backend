@@ -35,6 +35,10 @@ export function registerSocketBroadcaster(_io: SocketIOServer): void {
     void RealtimeService.refreshDashboard(payload.shopId, 'inventory', payload.productId);
   });
 
+  eventBus.on('product.updated', (payload) => {
+    void RealtimeService.refreshDashboard(payload.shopId, 'inventory', payload.productId);
+  });
+
   eventBus.on('notification.requested', (payload) => {
     void RealtimeService.pushNotification(payload.shopId, payload.userId, {
       type: payload.type,
