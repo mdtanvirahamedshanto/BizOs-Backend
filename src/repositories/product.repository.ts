@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { ConflictError, NotFoundError } from '@/utils/errors';
 
 export class ProductRepository {
   constructor(private prisma: PrismaClient) {}
@@ -143,6 +144,7 @@ export class ProductRepository {
       brand?: string;
       barcode?: string;
       isActive?: boolean;
+      lowStock?: boolean;
       limit: number;
       cursor?: string;
       sortBy?: string;
@@ -174,6 +176,17 @@ export class ProductRepository {
 
     if (options.isActive !== undefined) {
       whereClause.isActive = options.isActive;
+    }
+
+    if (options.lowStock) {
+      whereClause.AND = [
+        ...(whereClause.AND || []),
+        {
+          stockQuantity: {
+            lte: this.prisma.product.fields.lowStockThreshold,
+          },
+        },
+      ];
     }
 
     const queryOptions: any = {
@@ -240,6 +253,88 @@ export class ProductRepository {
         lowStockThreshold: 0,
         isActive: true,
       },
+    });
+  }
+
+  async findStockMovements(
+    shopId: string,
+    productId: string,
+    options: { limit: number; cursor?: string },
+  ) {
+    const whereClause = { shopId, productId };
+
+    const queryOptions: any = {
+      where: whereClause,
+      take: options.limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        creator: { select: { id: true, name: true } },
+      },
+    };
+
+    if (options.cursor) {
+      queryOptions.cursor = { id: options.cursor };
+      queryOptions.skip = 1;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.stockMovement.findMany(queryOptions),
+      this.prisma.stockMovement.count({ where: whereClause }),
+    ]);
+
+    return { data, total };
+  }
+
+  async adjustStock(
+    shopId: string,
+    productId: string,
+    userId: string,
+    data: { type: 'IN' | 'OUT' | 'ADJUSTMENT' | 'DAMAGE'; quantity: number; notes?: string | null },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.findFirst({
+        where: { id: productId, shopId, deletedAt: null },
+      });
+
+      if (!product) {
+        throw new NotFoundError('Product');
+      }
+
+      let delta = data.quantity;
+      if (data.type === 'OUT' || data.type === 'DAMAGE') {
+        delta = -Math.abs(data.quantity);
+      } else {
+        delta = Math.abs(data.quantity);
+      }
+
+      const newStock = product.stockQuantity + delta;
+      if (newStock < 0) {
+        throw new ConflictError('Insufficient stock for this adjustment');
+      }
+
+      const updatedProduct = await tx.product.update({
+        where: { id: productId },
+        data: { stockQuantity: newStock },
+        include: { category: true },
+      });
+
+      const movement = await tx.stockMovement.create({
+        data: {
+          shopId,
+          productId,
+          type: data.type,
+          quantity: delta,
+          unitCostCents: product.costPriceCents,
+          referenceType: 'adjustment',
+          notes: data.notes,
+          createdBy: userId,
+        },
+        include: {
+          creator: { select: { id: true, name: true } },
+        },
+      });
+
+      return { product: updatedProduct, movement, balanceAfter: newStock };
     });
   }
 }

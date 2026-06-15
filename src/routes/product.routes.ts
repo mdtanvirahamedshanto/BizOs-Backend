@@ -14,6 +14,8 @@ import {
   createProductSchema,
   updateProductSchema,
   productQuerySchema,
+  stockMovementQuerySchema,
+  stockAdjustmentSchema,
 } from '@/validators/product.schema';
 
 const productRepo = new ProductRepository(prisma);
@@ -45,6 +47,8 @@ productRouter.post('/', authorize('products.create'), validate(createProductSche
 productRouter.get('/', authorize('products.read'), validate(productQuerySchema, 'query'), productController.listProducts);
 productRouter.get('/brands', authorize('products.read'), productController.getBrands);
 productRouter.get('/units', authorize('products.read'), productController.getUnits);
+productRouter.get('/:id/stock-movements', authorize('products.read'), validate(stockMovementQuerySchema, 'query'), productController.listStockMovements);
+productRouter.post('/:id/stock-adjustments', authorize('products.update'), validate(stockAdjustmentSchema), productController.adjustStock);
 productRouter.get('/:id', authorize('products.read'), productController.getProduct);
 productRouter.put('/:id', authorize('products.update'), validate(updateProductSchema), productController.updateProduct);
 productRouter.delete('/:id', authorize('products.delete'), productController.deleteProduct);

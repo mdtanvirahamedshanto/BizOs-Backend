@@ -154,4 +154,27 @@ export class ProductController {
       next(err);
     }
   };
+
+  listStockMovements = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.shopId!;
+      const productId = req.params.id as string;
+      const result = await this.productService.listStockMovements(shopId, productId, req.query as any);
+      sendSuccess(res, result.data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  adjustStock = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.shopId!;
+      const productId = req.params.id as string;
+      const actorUserId = req.user?.id;
+      const result = await this.productService.adjustStock(shopId, productId, req.body, actorUserId);
+      sendCreated(res, result.data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

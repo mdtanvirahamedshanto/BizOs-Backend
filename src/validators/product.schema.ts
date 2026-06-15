@@ -49,6 +49,11 @@ export const productQuerySchema = z.object({
     if (val === 'false') return false;
     return val;
   }, z.boolean().optional()),
+  lowStock: z.preprocess((val) => {
+    if (val === 'true') return true;
+    if (val === 'false') return false;
+    return val;
+  }, z.boolean().optional()),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   cursor: z.string().optional(),
   sortBy: z.string().optional(),
@@ -62,3 +67,17 @@ export type CategoryQueryDTO = z.infer<typeof categoryQuerySchema>;
 export type CreateProductDTO = z.infer<typeof createProductSchema>;
 export type UpdateProductDTO = z.infer<typeof updateProductSchema>;
 export type ProductQueryDTO = z.infer<typeof productQuerySchema>;
+
+export const stockMovementQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+});
+
+export const stockAdjustmentSchema = z.object({
+  type: z.enum(['IN', 'OUT', 'ADJUSTMENT', 'DAMAGE']),
+  quantity: z.number().int().positive('Quantity must be positive'),
+  notes: z.string().max(1000).optional().nullable(),
+});
+
+export type StockMovementQueryDTO = z.infer<typeof stockMovementQuerySchema>;
+export type StockAdjustmentDTO = z.infer<typeof stockAdjustmentSchema>;

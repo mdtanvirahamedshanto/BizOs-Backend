@@ -13,6 +13,8 @@ import type {
   CreateProductDTO,
   UpdateProductDTO,
   ProductQueryDTO,
+  StockMovementQueryDTO,
+  StockAdjustmentDTO,
 } from '@/validators/product.schema';
 import { AuditService } from './audit.service';
 import { CacheService } from './cache.service';
@@ -353,6 +355,7 @@ export class ProductService {
       brand: query.brand,
       barcode: query.barcode,
       isActive: query.isActive,
+      lowStock: query.lowStock,
       limit,
       cursor: query.cursor,
       sortBy,
@@ -377,5 +380,52 @@ export class ProductService {
     const dbUnits = await this.productRepo.getUniqueUnits(shopId);
     const allUnits = Array.from(new Set([...defaultUnits, ...dbUnits]));
     return success(allUnits);
+  }
+
+  async listStockMovements(
+    shopId: string,
+    productId: string,
+    query: StockMovementQueryDTO,
+  ): Promise<ServiceResult<PaginatedResult<any>>> {
+    const product = await this.productRepo.findProductById(shopId, productId);
+    if (!product) {
+      throw new NotFoundError('Product');
+    }
+
+    const limit = query.limit || PAGINATION_DEFAULTS.LIMIT;
+    const { data, total } = await this.productRepo.findStockMovements(shopId, productId, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    const meta = buildPaginationMeta(total, limit, data, query.cursor);
+
+    return success({ data, meta });
+  }
+
+  async adjustStock(
+    shopId: string,
+    productId: string,
+    dto: StockAdjustmentDTO,
+    actorUserId?: string,
+  ): Promise<ServiceResult<any>> {
+    const result = await this.productRepo.adjustStock(shopId, productId, actorUserId || '', {
+      type: dto.type,
+      quantity: dto.quantity,
+      notes: dto.notes,
+    });
+
+    await CacheService.del(CacheService.buildKey(shopId, 'inventory', 'product', productId));
+
+    await AuditService.log({
+      shopId,
+      userId: actorUserId,
+      action: 'stock.adjusted',
+      entity: 'stock_movements',
+      entityId: result.movement.id,
+      newValues: result.movement as any,
+    });
+
+    return success(result);
   }
 }
