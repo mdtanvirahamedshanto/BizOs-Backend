@@ -19,6 +19,7 @@ router.use(tenantContext);
 
 router.post('/', authorize('customers.create'), validate(createCustomerSchema), customerController.createCustomer);
 router.get('/', authorize('customers.read'), validate(customerQuerySchema, 'query'), customerController.listCustomers);
+router.get('/:id/statement', authorize('customers.read'), customerController.generateCustomerStatementPdf);
 router.get('/:id', authorize('customers.read'), customerController.getCustomer);
 router.put('/:id', authorize('customers.update'), validate(updateCustomerSchema), customerController.updateCustomer);
 router.delete('/:id', authorize('customers.delete'), customerController.deleteCustomer);

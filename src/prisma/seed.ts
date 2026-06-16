@@ -58,6 +58,18 @@ async function main() {
     { module: 'system', resource: 'audit', action: 'read', description: 'Read audit trail logs' },
     { module: 'system', resource: 'uploads', action: 'read', description: 'Read uploaded files and presigned URLs' },
     { module: 'system', resource: 'uploads', action: 'write', description: 'Upload and delete files' },
+    // Shop & billing permissions
+    { module: 'system', resource: 'shop', action: 'read', description: 'Read shop details' },
+    { module: 'system', resource: 'shop', action: 'update', description: 'Update shop settings' },
+    { module: 'system', resource: 'shop', action: 'delete', description: 'Delete shop account' },
+    { module: 'system', resource: 'users', action: 'read', description: 'Read team users' },
+    { module: 'system', resource: 'users', action: 'invite', description: 'Invite users to team' },
+    { module: 'system', resource: 'users', action: 'update', description: 'Update user roles and info' },
+    { module: 'system', resource: 'roles', action: 'manage', description: 'Manage custom roles' },
+    { module: 'system', resource: 'billing', action: 'manage', description: 'Manage shop plan and subscription' },
+    // Customers update & delete
+    { module: 'crm', resource: 'customers', action: 'update', description: 'Update customer details' },
+    { module: 'crm', resource: 'customers', action: 'delete', description: 'Delete customer records' },
   ];
 
   const seededPermissions = [];

@@ -285,6 +285,12 @@ export class SalesRepository {
 
           const newBalance = khata.balanceCents + saleData.dueCents;
 
+          if (khata.creditLimitCents > 0 && newBalance > khata.creditLimitCents) {
+            throw new ConflictError(
+              `Credit limit exceeded. Customer credit limit is ${(khata.creditLimitCents / 100).toFixed(2)} BDT, current balance is ${(khata.balanceCents / 100).toFixed(2)} BDT, new balance would be ${(newBalance / 100).toFixed(2)} BDT.`
+            );
+          }
+
           await tx.khataAccount.update({
             where: { id: khata.id },
             data: { balanceCents: newBalance },

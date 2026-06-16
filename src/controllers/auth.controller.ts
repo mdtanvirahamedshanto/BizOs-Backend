@@ -14,6 +14,21 @@ export class AuthController {
     try {
       const result = await this.authService.register(req.body);
       if (result.success) {
+        if (result.data?.tokens) {
+          const { accessToken, refreshToken } = result.data.tokens;
+          res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 1 * 24 * 60 * 60 * 1000,
+          });
+          res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+          });
+        }
         sendCreated(res, result.data);
       } else {
         res.status(400).json({ success: false, error: result.error });
@@ -31,6 +46,21 @@ export class AuthController {
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
       });
+      if (result.success && result.data?.tokens) {
+        const { accessToken, refreshToken } = result.data.tokens;
+        res.cookie('accessToken', accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 1 * 24 * 60 * 60 * 1000,
+        });
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+      }
       sendSuccess(res, result.data);
     } catch (err) {
       next(err);
@@ -39,7 +69,25 @@ export class AuthController {
 
   refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.authService.refreshToken(req.body.refreshToken);
+      const tokenVal = req.body.refreshToken || req.cookies?.refreshToken;
+      const result = await this.authService.refreshToken(tokenVal);
+      if (result.success && result.data) {
+        const { accessToken, refreshToken } = result.data;
+        res.cookie('accessToken', accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 1 * 24 * 60 * 60 * 1000,
+        });
+        if (refreshToken) {
+          res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+          });
+        }
+      }
       sendSuccess(res, result.data);
     } catch (err) {
       next(err);
@@ -48,7 +96,10 @@ export class AuthController {
 
   logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      await this.authService.logout(req.user!.id, req.body.refreshToken);
+      const tokenVal = req.body.refreshToken || req.cookies?.refreshToken;
+      await this.authService.logout(req.user!.id, tokenVal);
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
       sendNoContent(res);
     } catch (err) {
       next(err);
@@ -109,6 +160,21 @@ export class AuthController {
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
       });
+      if (result.success && result.data?.tokens) {
+        const { accessToken, refreshToken } = result.data.tokens;
+        res.cookie('accessToken', accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 1 * 24 * 60 * 60 * 1000,
+        });
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+      }
       sendSuccess(res, result.data);
     } catch (err) {
       next(err);

@@ -106,6 +106,37 @@ export class AuthRepository {
       );
 
       const ownerRole = roles.find((r) => r.name === 'Owner')!;
+      const managerRole = roles.find((r) => r.name === 'Manager')!;
+      const staffRole = roles.find((r) => r.name === 'Staff')!;
+
+      // Fetch all global permissions to map to Manager and Staff
+      const permissions = await tx.permission.findMany();
+
+      for (const perm of permissions) {
+        const permString = `${perm.resource}.${perm.action}`;
+
+        // Manager gets everything
+        await tx.rolePermission.create({
+          data: {
+            roleId: managerRole.id,
+            permissionId: perm.id,
+          },
+        });
+
+        // Staff gets products.read, sales.read, sales.create
+        if (
+          permString === 'products.read' ||
+          permString === 'sales.read' ||
+          permString === 'sales.create'
+        ) {
+          await tx.rolePermission.create({
+            data: {
+              roleId: staffRole.id,
+              permissionId: perm.id,
+            },
+          });
+        }
+      }
 
       // 3. Create the Owner User
       const user = await tx.user.create({
