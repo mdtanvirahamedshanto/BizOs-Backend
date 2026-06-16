@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { AuditQueryService } from '@/services/auditQuery.service';
+import type { AuditQueryService } from '@/services/auditQuery.service';
 import { sendSuccess } from '@/utils/response';
 import type { AuditQueryDTO } from '@/validators/audit.schema';
 

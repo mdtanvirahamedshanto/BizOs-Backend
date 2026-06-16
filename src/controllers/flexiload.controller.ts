@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { FlexiloadService } from '@/services/flexiload.service';
+import type { FlexiloadService } from '@/services/flexiload.service';
 import { sendSuccess, sendCreated } from '@/utils/response';
 
 export class FlexiloadController {
@@ -61,7 +61,7 @@ export class FlexiloadController {
   createTransaction = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const actorUserId = req.user?.id!;
+      const actorUserId = req.user!.id;
       const result = await this.flexiloadService.createTransaction(shopId, actorUserId, req.body);
       sendCreated(res, result.data);
     } catch (err) {

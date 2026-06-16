@@ -1,4 +1,4 @@
-import { PaymentRepository } from '@/repositories/payment.repository';
+import type { PaymentRepository } from '@/repositories/payment.repository';
 import { NotFoundError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

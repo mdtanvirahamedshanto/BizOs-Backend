@@ -360,22 +360,22 @@
 | 2 | Khata collection missing cashbook | Post cashbook IN on CASH collection/repayment | ✅ Fixed (Backend) |
 | 3 | Unify khata payment paths | One service method for all collection types | ✅ Fixed (Backend) |
 | 4 | Sale due without customer | Block or force customer selection for credit sales | ✅ Fixed (Backend) |
-| 5 | POS mock checkout fallback | Remove; show error + retry | ❌ Pending (Frontend) |
-| 6 | POS returns not calling API | Wire `POST /sales/:id/return` | ❌ Pending (Frontend) |
-| 7 | Frontend MFS/flexiload wrong API | Migrate to `mfs.api.ts` / `flexiload.api.ts` | ❌ Pending (Frontend) |
+| 5 | POS mock checkout fallback | Remove; show error + retry | ✅ Fixed (Frontend) |
+| 6 | POS returns not calling API | Wire `POST /sales/:id/return` | ✅ Fixed (Frontend) |
+| 7 | Frontend MFS/flexiload wrong API | Migrate to `mfs.api.ts` / `flexiload.api.ts` | ✅ Fixed (Frontend) |
 
 ## P1 — Workflow completion
 
-| # | Improvement |
-|---|-------------|
-| 8 | Cashbook UI + daily closing |
-| 9 | Customer khata statement PDF |
-| 10 | Credit limit on khata accounts |
-| 11 | Cashier shift + Z-report |
-| 12 | Split payments on sale create |
-| 13 | Stock take module |
-| 14 | Recurring expense cron worker |
-| 15 | Settings page (shop, team, receipt) |
+| # | Improvement | Status |
+|---|-------------|--------|
+| 8 | Cashbook UI + daily closing | ✅ Fixed (Frontend) |
+| 9 | Customer khata statement PDF | ✅ Fixed (Backend + Frontend) |
+| 10 | Credit limit on khata accounts | ✅ Fixed (Backend) |
+| 11 | Cashier shift + Z-report | |
+| 12 | Split payments on sale create | |
+| 13 | Stock take module | |
+| 14 | Recurring expense cron worker | |
+| 15 | Settings page (shop, team, receipt) | ✅ Fixed (Frontend) |
 
 ## P2 — Operational excellence
 
@@ -456,9 +456,9 @@
 
 | Report | Backend | Frontend | Status |
 |--------|---------|----------|--------|
-| Cashbook balance | ✅ `/cashbook/balance` | ❌ no UI | ⚠️ |
-| Cashbook entries | ✅ `/cashbook/entries` | ❌ | ⚠️ |
-| Daily closing history | ✅ `/cashbook/closings` | ❌ | ⚠️ |
+| Cashbook balance | ✅ `/cashbook/balance` | ✅ | ✅ |
+| Cashbook entries | ✅ `/cashbook/entries` | ✅ | ✅ |
+| Daily closing history | ✅ `/cashbook/closings` | ✅ | ✅ |
 | Cash vs sales reconciliation | ❌ | ❌ | ❌ |
 | Petty cash | ❌ | ❌ | ❌ |
 
@@ -467,7 +467,7 @@
 | Report | Backend | Frontend | Status |
 |--------|---------|----------|--------|
 | Customer list | ✅ `/customers` | ✅ | ✅ |
-| Customer khata statement | ❌ PDF | ❌ | ❌ |
+| Customer khata statement | ✅ PDF | ✅ (PDF Download) | ✅ |
 | Customer aging | ❌ | ❌ | ❌ |
 | Customer purchase history | ⚠️ via sales filter | ⚠️ | ⚠️ |
 
@@ -493,8 +493,8 @@
 
 | Report | Backend | Frontend | Status |
 |--------|---------|----------|--------|
-| MFS balance by provider | ⚠️ dashboard balances | ❌ | ⚠️ |
-| MFS transaction log | ✅ `/mfs/transactions` | ❌ mock UI | ⚠️ |
+| MFS balance by provider | ⚠️ dashboard balances | ✅ | ⚠️ |
+| MFS transaction log | ✅ `/mfs/transactions` | ✅ | ✅ |
 | Commission summary | ❌ | ❌ | ❌ |
 | Float reconciliation | ❌ | ❌ | ❌ |
 | CICO volume by day | ❌ | ❌ | ❌ |
@@ -503,7 +503,7 @@
 
 | Report | Backend | Frontend | Status |
 |--------|---------|----------|--------|
-| Recharge log | ✅ `/flexiload/recharges` | ❌ mock UI | ⚠️ |
+| Recharge log | ✅ `/flexiload/recharges` | ✅ | ✅ |
 | Margin by operator | ❌ | ❌ | ❌ |
 | Failed recharge | ❌ | ❌ | ❌ |
 
@@ -534,15 +534,15 @@
 | Inventory | 3 | 5 | 38% |
 | Profit | 2 | 2 | 50% |
 | Expense | 1 | 3 | 25% |
-| Cash | 3 | 2 | 60% (no UI) |
-| Customer | 1 | 3 | 25% |
+| Cash | 3 | 2 | 60% |
+| Customer | 2 | 2 | 50% |
 | Supplier | 2 | 2 | 50% |
 | Due | 1 | 3 | 25% |
-| MFS | 1 | 4 | 20% |
-| Flexiload | 1 | 2 | 33% |
+| MFS | 2 | 3 | 40% |
+| Flexiload | 2 | 1 | 66% |
 | Tax | 0 | 4 | 0% |
 | Employee | 0 | 4 | 0% |
-| **Total** | **19** | **46** | **29%** |
+| **Total** | **22** | **43** | **34%** |
 
 ---
 
@@ -560,15 +560,15 @@
 
 ## Gaps
 
-| Gap | Severity |
-|-----|----------|
-| 5 route permissions missing from seed (`shop.*`, `customers.update/delete`) | High |
-| New shops via register: Manager/Staff have **zero** permissions until manual seed | Critical |
-| 3 seeded permissions unused (`sales.update/delete`, `purchases.delete`) | Low |
-| No user/role management API | Critical |
-| No platform super-admin (cross-tenant) | Critical |
-| Dashboard loads for Staff but may 403 on `/reports/dashboard` | High |
-| Customers/Telegram/MFS pages have no nav permission gates | Medium |
+| Gap | Severity | Status |
+|-----|----------|--------|
+| 5 route permissions missing from seed (`shop.*`, `customers.update/delete`) | High | ✅ Fixed |
+| New shops via register: Manager/Staff have **zero** permissions until manual seed | Critical | ✅ Fixed |
+| 3 seeded permissions unused (`sales.update/delete`, `purchases.delete`) | Low | |
+| No user/role management API | Critical | ✅ Fixed |
+| No platform super-admin (cross-tenant) | Critical | |
+| Dashboard loads for Staff but may 403 on `/reports/dashboard` | High | ✅ Fixed (Guard applied) |
+| Customers/Telegram/MFS pages have no nav permission gates | Medium | ✅ Fixed |
 
 ---
 
@@ -771,21 +771,21 @@
 1. Supplier due double-count bug (Fixed)  
 2. Khata collection cashbook gap (Fixed)  
 3. Sale credit without customer (Fixed)  
-4. POS mock checkout on failure  
-5. POS returns not persisted  
-6. MFS/flexiload UI not wired  
-7. Unguarded admin panel  
+4. POS mock checkout on failure (Fixed)  
+5. POS returns not persisted (Fixed)  
+6. MFS/flexiload UI not wired (Fixed)  
+7. Unguarded admin panel (Fixed)  
 8. No subscription billing  
-9. No team invite / role assignment API  
-10. Settings page missing (404)  
-11. Cashbook UI missing  
-12. Customer khata statement  
-13. Credit limit enforcement  
-14. Remove production mock fallbacks  
-15. JWT security (HttpOnly cookies)  
-16. PermissionGuard on routes  
-17. Register flow: Manager/Staff get zero permissions  
-18. Seed missing `shop.*`, `customers.update/delete`  
+9. No team invite / role assignment API (Fixed)  
+10. Settings page missing (404) (Fixed)  
+11. Cashbook UI missing (Fixed)  
+12. Customer khata statement (Fixed)  
+13. Credit limit enforcement (Fixed)  
+14. Remove production mock fallbacks (Fixed)  
+15. JWT security (HttpOnly cookies) (Fixed)  
+16. PermissionGuard on routes (Fixed)  
+17. Register flow: Manager/Staff get zero permissions (Fixed)  
+18. Seed missing `shop.*`, `customers.update/delete` (Fixed)  
 19. Offline POS broken UX  
 20. Z-report / shift close  
 21. Sales by product report  

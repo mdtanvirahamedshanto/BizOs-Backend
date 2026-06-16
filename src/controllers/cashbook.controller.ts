@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { CashbookService } from '@/services/cashbook.service';
+import type { CashbookService } from '@/services/cashbook.service';
 import { sendSuccess, sendCreated } from '@/utils/response';
 
 export class CashbookController {
@@ -8,7 +8,7 @@ export class CashbookController {
   recordCashIn = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const actorUserId = req.user?.id!;
+      const actorUserId = req.user!.id;
       const result = await this.cashbookService.recordCashIn(shopId, actorUserId, req.body);
       sendCreated(res, result.data);
     } catch (err) {
@@ -19,7 +19,7 @@ export class CashbookController {
   recordCashOut = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const actorUserId = req.user?.id!;
+      const actorUserId = req.user!.id;
       const result = await this.cashbookService.recordCashOut(shopId, actorUserId, req.body);
       sendCreated(res, result.data);
     } catch (err) {
@@ -61,7 +61,7 @@ export class CashbookController {
   recordClosing = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const actorUserId = req.user?.id!;
+      const actorUserId = req.user!.id;
       const dateStr = req.query.date as string;
       const result = await this.cashbookService.recordClosing(shopId, actorUserId, req.body, dateStr);
       sendCreated(res, result.data);

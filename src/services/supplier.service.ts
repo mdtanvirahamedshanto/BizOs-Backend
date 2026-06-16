@@ -1,4 +1,4 @@
-import { SupplierRepository } from '@/repositories/supplier.repository';
+import type { SupplierRepository } from '@/repositories/supplier.repository';
 import { NotFoundError, ConflictError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

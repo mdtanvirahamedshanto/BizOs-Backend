@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ProductService } from '@/services/product.service';
+import type { ProductService } from '@/services/product.service';
 import { sendSuccess, sendCreated, sendNoContent } from '@/utils/response';
 
 export class ProductController {

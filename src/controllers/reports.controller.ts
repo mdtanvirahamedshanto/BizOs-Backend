@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ReportsService } from '@/services/reports.service';
+import type { ReportsService } from '@/services/reports.service';
 import { sendSuccess } from '@/utils/response';
 import type { DashboardQueryInput, ReportQueryInput } from '@/validators/reports.schema';
 
@@ -72,7 +72,7 @@ export class ReportsController {
   generateReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const { reportType, parameters } = req.body;
       const result = await this.reportsService.requestAsyncReport(
         shopId,

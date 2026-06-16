@@ -3,7 +3,7 @@ import { productionConfig } from '@/config/production';
 import { env } from '@/env';
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var prisma: PrismaClient | undefined;
 }
 

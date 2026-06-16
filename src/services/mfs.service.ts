@@ -1,4 +1,4 @@
-import { MfsRepository } from '@/repositories/mfs.repository';
+import type { MfsRepository } from '@/repositories/mfs.repository';
 import { NotFoundError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

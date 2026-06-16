@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { TelegramService } from '@/services/telegram.service';
+import type { TelegramService } from '@/services/telegram.service';
 import { sendSuccess, sendNoContent } from '@/utils/response';
 
 export class TelegramController {
@@ -8,7 +8,7 @@ export class TelegramController {
   createLinkToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.telegramService.createLinkToken(shopId, userId);
 
       if (!result.success) {
@@ -25,7 +25,7 @@ export class TelegramController {
   getLinkStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.telegramService.getLinkStatus(shopId, userId);
       sendSuccess(res, result.data);
     } catch (err) {
@@ -36,7 +36,7 @@ export class TelegramController {
   unlinkAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       await this.telegramService.unlinkAccount(shopId, userId);
       sendNoContent(res);
     } catch (err) {
@@ -47,7 +47,7 @@ export class TelegramController {
   getIntegrationStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.telegramService.getIntegrationStatus(shopId, userId);
       sendSuccess(res, result.data);
     } catch (err) {
@@ -90,7 +90,7 @@ export class TelegramController {
   updatePreferences = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.telegramService.updateNotificationPreferences(shopId, userId, req.body);
       sendSuccess(res, result.data);
     } catch (err) {
@@ -101,7 +101,7 @@ export class TelegramController {
   sendTestMessage = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.telegramService.sendTestMessage(shopId, userId);
 
       if (!result.success) {

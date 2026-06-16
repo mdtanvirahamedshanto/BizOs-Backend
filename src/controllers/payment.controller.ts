@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { PaymentService } from '@/services/payment.service';
+import type { PaymentService } from '@/services/payment.service';
 import { sendSuccess, sendCreated } from '@/utils/response';
 
 export class PaymentController {
@@ -8,7 +8,7 @@ export class PaymentController {
   createPayment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.paymentService.createPayment(shopId, userId, req.body);
       sendCreated(res, result.data);
     } catch (err) {
@@ -41,7 +41,7 @@ export class PaymentController {
     try {
       const shopId = req.shopId!;
       const paymentId = req.params.id as string;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.paymentService.refundPayment(shopId, paymentId, userId, req.body);
       sendSuccess(res, result.data);
     } catch (err) {

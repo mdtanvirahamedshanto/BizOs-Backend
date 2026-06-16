@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { SupplierService } from '@/services/supplier.service';
+import type { SupplierService } from '@/services/supplier.service';
 import { sendSuccess, sendCreated, sendNoContent } from '@/utils/response';
 
 export class SupplierController {

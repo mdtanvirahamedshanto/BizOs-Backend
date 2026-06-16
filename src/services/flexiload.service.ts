@@ -1,4 +1,4 @@
-import { FlexiloadRepository } from '@/repositories/flexiload.repository';
+import type { FlexiloadRepository } from '@/repositories/flexiload.repository';
 import { NotFoundError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

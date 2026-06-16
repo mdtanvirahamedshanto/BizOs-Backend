@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { PurchaseService } from '@/services/purchase.service';
+import type { PurchaseService } from '@/services/purchase.service';
 import { sendSuccess, sendCreated } from '@/utils/response';
 
 export class PurchaseController {
@@ -8,7 +8,7 @@ export class PurchaseController {
   createPurchase = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.purchaseService.createPurchase(shopId, userId, req.body);
       sendCreated(res, result.data);
     } catch (err) {
@@ -41,7 +41,7 @@ export class PurchaseController {
     try {
       const shopId = req.shopId!;
       const purchaseId = req.params.id as string;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.purchaseService.updatePurchaseStatus(shopId, purchaseId, userId, req.body);
       sendSuccess(res, result.data);
     } catch (err) {
@@ -53,7 +53,7 @@ export class PurchaseController {
     try {
       const shopId = req.shopId!;
       const purchaseId = req.params.id as string;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.purchaseService.processReturn(shopId, purchaseId, userId, req.body);
       sendSuccess(res, result.data);
     } catch (err) {

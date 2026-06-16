@@ -1,4 +1,4 @@
-import { ExpenseRepository } from '@/repositories/expense.repository';
+import type { ExpenseRepository } from '@/repositories/expense.repository';
 import { NotFoundError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

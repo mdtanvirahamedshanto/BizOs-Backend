@@ -1,4 +1,4 @@
-import { CustomerRepository } from '@/repositories/customer.repository';
+import type { CustomerRepository } from '@/repositories/customer.repository';
 import { NotFoundError, ConflictError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

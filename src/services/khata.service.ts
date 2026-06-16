@@ -1,4 +1,4 @@
-import { KhataRepository } from '@/repositories/khata.repository';
+import type { KhataRepository } from '@/repositories/khata.repository';
 import { NotFoundError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

@@ -1,6 +1,6 @@
 import type { DashboardQueryInput, ReportQueryInput } from '@/validators/reports.schema';
 import type { DashboardTimeframe } from '@/validators/reports.schema';
-import { ReportsRepository } from '@/repositories/reports.repository';
+import type { ReportsRepository } from '@/repositories/reports.repository';
 import { success, type ServiceResult } from '@/types/service';
 import { CacheService } from '@/services/cache.service';
 import { reportEvents } from '@/events/report.events';

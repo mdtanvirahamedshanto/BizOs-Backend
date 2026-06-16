@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { CustomerService } from '@/services/customer.service';
+import type { CustomerService } from '@/services/customer.service';
 import { sendSuccess, sendCreated, sendNoContent } from '@/utils/response';
 import { PdfService } from '@/services/pdf.service';
 import { prisma } from '@/prisma/client';

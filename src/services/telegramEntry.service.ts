@@ -1,8 +1,8 @@
-import { CustomerRepository } from '@/repositories/customer.repository';
-import { KhataRepository } from '@/repositories/khata.repository';
-import { SalesRepository } from '@/repositories/sales.repository';
-import { ProductRepository } from '@/repositories/product.repository';
-import { ExpenseRepository } from '@/repositories/expense.repository';
+import type { CustomerRepository } from '@/repositories/customer.repository';
+import type { KhataRepository } from '@/repositories/khata.repository';
+import type { SalesRepository } from '@/repositories/sales.repository';
+import type { ProductRepository } from '@/repositories/product.repository';
+import type { ExpenseRepository } from '@/repositories/expense.repository';
 import { khataEvents } from '@/events/khata.events';
 import { salesEvents } from '@/events/sales.events';
 import { expenseEvents } from '@/events/expense.events';

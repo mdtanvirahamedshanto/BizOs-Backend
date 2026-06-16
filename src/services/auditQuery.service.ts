@@ -1,4 +1,4 @@
-import { AuditRepository } from '@/repositories/audit.repository';
+import type { AuditRepository } from '@/repositories/audit.repository';
 import { NotFoundError } from '@/utils/errors';
 import { success, type ServiceResult } from '@/types/service';
 import { buildPaginationMeta } from '@/utils/pagination';

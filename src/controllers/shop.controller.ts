@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ShopService } from '@/services/shop.service';
+import type { ShopService } from '@/services/shop.service';
 import { sendSuccess, sendNoContent } from '@/utils/response';
 import { ForbiddenError } from '@/utils/errors';
 

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { SalesService } from '@/services/sales.service';
+import type { SalesService } from '@/services/sales.service';
 import { PdfService } from '@/services/pdf.service';
 import { prisma } from '@/prisma/client';
 import { NotFoundError } from '@/utils/errors';
@@ -11,7 +11,7 @@ export class SalesController {
   createSale = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.salesService.createSale(shopId, userId, req.body);
       sendCreated(res, result.data);
     } catch (err) {
@@ -44,7 +44,7 @@ export class SalesController {
     try {
       const shopId = req.shopId!;
       const saleId = req.params.id as string;
-      const userId = req.user?.id!;
+      const userId = req.user!.id;
       const result = await this.salesService.processReturn(shopId, saleId, userId, req.body);
       sendSuccess(res, result.data);
     } catch (err) {

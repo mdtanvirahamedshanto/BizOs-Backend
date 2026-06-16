@@ -1,4 +1,4 @@
-import { Server as HttpServer } from 'http';
+import type { Server as HttpServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createRedisConnection } from './redis';

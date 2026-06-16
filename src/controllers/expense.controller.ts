@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ExpenseService } from '@/services/expense.service';
+import type { ExpenseService } from '@/services/expense.service';
 import { sendSuccess, sendCreated, sendNoContent } from '@/utils/response';
 
 export class ExpenseController {
@@ -72,7 +72,7 @@ export class ExpenseController {
   createExpense = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const actorUserId = req.user?.id!;
+      const actorUserId = req.user!.id;
       const result = await this.expenseService.createExpense(shopId, actorUserId, req.body);
       sendCreated(res, result.data);
     } catch (err) {
@@ -132,7 +132,7 @@ export class ExpenseController {
   createRecurringExpense = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const shopId = req.shopId!;
-      const actorUserId = req.user?.id!;
+      const actorUserId = req.user!.id;
       const result = await this.expenseService.createRecurringExpense(shopId, actorUserId, req.body);
       sendCreated(res, result.data);
     } catch (err) {

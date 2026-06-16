@@ -3,8 +3,8 @@ import { env } from '@/env';
 import { generateToken } from '@/utils/crypto';
 import { success, failure, type ServiceResult } from '@/types/service';
 import { NotFoundError, ConflictError } from '@/utils/errors';
-import { TelegramRepository } from '@/repositories/telegram.repository';
-import { TelegramEntryService } from '@/services/telegramEntry.service';
+import type { TelegramRepository } from '@/repositories/telegram.repository';
+import type { TelegramEntryService } from '@/services/telegramEntry.service';
 import { parseNaturalLanguageEntry, type ParsedEntry, getParserHelpText } from '@/bot/nlp/parser';
 import { AuditService } from '@/services/audit.service';
 

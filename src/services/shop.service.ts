@@ -1,4 +1,4 @@
-import { ShopRepository } from '@/repositories/shop.repository';
+import type { ShopRepository } from '@/repositories/shop.repository';
 import { NotFoundError } from '@/utils/errors';
 import { success } from '@/types/service';
 import type { ServiceResult } from '@/types/service';

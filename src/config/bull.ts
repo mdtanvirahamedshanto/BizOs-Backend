@@ -1,4 +1,5 @@
-import { Queue, Worker, QueueEvents } from 'bullmq';
+import type { QueueEvents } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 
 import type { QueueName } from '@/queues/queueRegistry';
 import { logger } from '@/config/logger';
