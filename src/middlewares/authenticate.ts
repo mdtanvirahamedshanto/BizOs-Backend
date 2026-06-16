@@ -12,12 +12,17 @@ import { UnauthorizedError } from '@/utils/errors';
  */
 export function authenticate(req: Request, _res: Response, next: NextFunction): void {
   try {
+    let token: string | undefined;
     const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedError('Missing or invalid authorization header');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
     }
 
-    const token = authHeader.substring(7); // Remove "Bearer " prefix
+    if (!token) {
+      throw new UnauthorizedError('Missing or invalid authorization token');
+    }
 
     const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
     const shopId = decoded.shopId || decoded.tenantId;

@@ -1,8 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
 import { NotFoundError, ConflictError } from '@/utils/errors';
+import { CashbookRepository } from './cashbook.repository';
 
 export class KhataRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient | any) {}
 
   async findAndCountAccounts(
     shopId: string,
@@ -98,6 +99,97 @@ export class KhataRepository {
     return { data, total };
   }
 
+  async recordKhataPayment(
+    tx: any,
+    shopId: string,
+    accountId: string,
+    userId: string,
+    data: {
+      amountCents: number;
+      method: 'CASH' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'BANK' | 'CARD' | 'CHECK' | 'OTHER';
+      reference: string | null;
+      notes: string | null;
+    },
+  ) {
+    const khata = await tx.khataAccount.findFirst({
+      where: { id: accountId, shopId, isActive: true },
+    });
+
+    if (!khata) {
+      throw new NotFoundError('Active Khata Account');
+    }
+
+    const isCustomer = khata.partyType === 'CUSTOMER';
+    const paymentType = isCustomer ? 'RECEIVED' : 'MADE';
+
+    // Adjust Khata balance
+    // Customer paying shop reduces ledger balance (+ve balance represents receivable)
+    // Shop paying supplier reduces payable debt (-ve balance represents payable, increases towards 0)
+    const newBalance = isCustomer
+      ? khata.balanceCents - data.amountCents
+      : khata.balanceCents + data.amountCents;
+
+    const khataEntryType = isCustomer ? 'CREDIT' : 'DEBIT';
+    const defaultPaymentNotes = isCustomer 
+      ? 'Customer khata outstanding dues collection' 
+      : 'Supplier khata debt repayment payout';
+    const defaultEntryDesc = isCustomer 
+      ? 'Collected dues cash payment' 
+      : 'Supplier repayment cash payout';
+
+    // 1. Create Payment record
+    const payment = await tx.payment.create({
+      data: {
+        shopId,
+        type: paymentType,
+        method: data.method,
+        amountCents: data.amountCents,
+        payableType: 'khata',
+        payableId: khata.id,
+        reference: data.reference,
+        notes: data.notes || defaultPaymentNotes,
+        recordedBy: userId,
+      },
+    });
+
+    // 2. Log to Cashbook if method is CASH
+    if (data.method === 'CASH') {
+      await CashbookRepository.recordEntry(tx, shopId, {
+        type: isCustomer ? 'IN' : 'OUT',
+        amountCents: data.amountCents,
+        description: isCustomer
+          ? `Customer khata collection: ${data.notes || 'No notes'}`
+          : `Supplier khata repayment payout: ${data.notes || 'No notes'}`,
+        referenceType: 'payment',
+        referenceId: payment.id,
+        recordedBy: userId,
+      });
+    }
+
+    // 3. Update KhataAccount balance
+    const updatedAccount = await tx.khataAccount.update({
+      where: { id: khata.id },
+      data: { balanceCents: newBalance },
+    });
+
+    // 4. Create KhataEntry
+    await tx.khataEntry.create({
+      data: {
+        shopId,
+        khataAccountId: khata.id,
+        type: khataEntryType,
+        amountCents: data.amountCents,
+        runningBalanceCents: newBalance,
+        description: data.notes || defaultEntryDesc,
+        referenceType: 'payment',
+        referenceId: payment.id,
+        recordedBy: userId,
+      },
+    });
+
+    return { payment, account: updatedAccount };
+  }
+
   async recordCollection(
     shopId: string,
     accountId: string,
@@ -109,59 +201,12 @@ export class KhataRepository {
       notes: string | null;
     },
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const khata = await tx.khataAccount.findFirst({
-        where: { id: accountId, shopId, isActive: true },
-      });
-
-      if (!khata) {
-        throw new NotFoundError('Active Khata Account');
-      }
-
-      if (khata.partyType !== 'CUSTOMER') {
+    return this.prisma.$transaction(async (tx: any) => {
+      const result = await this.recordKhataPayment(tx, shopId, accountId, userId, data);
+      if (result.account.partyType !== 'CUSTOMER') {
         throw new ConflictError('Dues collection can only be processed for customer khata accounts');
       }
-
-      // Customer paying shop reduces ledger balance (+ve balance represents receivable)
-      const newBalance = khata.balanceCents - data.amountCents;
-
-      // 1. Create Payment record (RECEIVED since shop receives cash)
-      const payment = await tx.payment.create({
-        data: {
-          shopId,
-          type: 'RECEIVED',
-          method: data.method,
-          amountCents: data.amountCents,
-          payableType: 'khata',
-          payableId: khata.id,
-          reference: data.reference,
-          notes: data.notes || 'Customer khata outstanding dues collection',
-          recordedBy: userId,
-        },
-      });
-
-      // 2. Update KhataAccount balance
-      const updatedAccount = await tx.khataAccount.update({
-        where: { id: khata.id },
-        data: { balanceCents: newBalance },
-      });
-
-      // 3. Create KhataEntry (CREDIT type since customer credit balance decreases)
-      await tx.khataEntry.create({
-        data: {
-          shopId,
-          khataAccountId: khata.id,
-          type: 'CREDIT',
-          amountCents: data.amountCents,
-          runningBalanceCents: newBalance,
-          description: data.notes || `Collected dues cash payment`,
-          referenceType: 'payment',
-          referenceId: payment.id,
-          recordedBy: userId,
-        },
-      });
-
-      return { payment, account: updatedAccount };
+      return result;
     });
   }
 
@@ -176,59 +221,12 @@ export class KhataRepository {
       notes: string | null;
     },
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const khata = await tx.khataAccount.findFirst({
-        where: { id: accountId, shopId, isActive: true },
-      });
-
-      if (!khata) {
-        throw new NotFoundError('Active Khata Account');
-      }
-
-      if (khata.partyType !== 'SUPPLIER') {
+    return this.prisma.$transaction(async (tx: any) => {
+      const result = await this.recordKhataPayment(tx, shopId, accountId, userId, data);
+      if (result.account.partyType !== 'SUPPLIER') {
         throw new ConflictError('Repayment payouts can only be processed for supplier khata accounts');
       }
-
-      // Shop paying supplier reduces payable debt (-ve balance represents payable, increases towards 0)
-      const newBalance = khata.balanceCents + data.amountCents;
-
-      // 1. Create Payment record (MADE since shop makes payout)
-      const payment = await tx.payment.create({
-        data: {
-          shopId,
-          type: 'MADE',
-          method: data.method,
-          amountCents: data.amountCents,
-          payableType: 'khata',
-          payableId: khata.id,
-          reference: data.reference,
-          notes: data.notes || 'Supplier khata debt repayment payout',
-          recordedBy: userId,
-        },
-      });
-
-      // 2. Update KhataAccount balance
-      const updatedAccount = await tx.khataAccount.update({
-        where: { id: khata.id },
-        data: { balanceCents: newBalance },
-      });
-
-      // 3. Create KhataEntry (DEBIT type since supplier balance increases towards 0)
-      await tx.khataEntry.create({
-        data: {
-          shopId,
-          khataAccountId: khata.id,
-          type: 'DEBIT',
-          amountCents: data.amountCents,
-          runningBalanceCents: newBalance,
-          description: data.notes || `Supplier repayment cash payout`,
-          referenceType: 'payment',
-          referenceId: payment.id,
-          recordedBy: userId,
-        },
-      });
-
-      return { payment, account: updatedAccount };
+      return result;
     });
   }
 
@@ -242,7 +240,7 @@ export class KhataRepository {
       description: string;
     },
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const khata = await tx.khataAccount.findFirst({
         where: { id: accountId, shopId },
       });

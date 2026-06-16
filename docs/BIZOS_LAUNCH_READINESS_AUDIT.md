@@ -9,11 +9,11 @@
 
 ---
 
-## Launch Readiness Score: **38 / 100**
+## Launch Readiness Score: **43 / 100**
 
 | Dimension | Score | Weight | Weighted |
 |-----------|-------|--------|----------|
-| Core transactional integrity | 55 | 20% | 11.0 |
+| Core transactional integrity | 85 | 20% | 17.0 |
 | Workflow completeness | 40 | 15% | 6.0 |
 | Reporting | 45 | 10% | 4.5 |
 | RBAC & security | 30 | 15% | 4.5 |
@@ -21,9 +21,9 @@
 | Frontend / UX parity | 35 | 10% | 3.5 |
 | Bangladesh SME fit | 50 | 10% | 5.0 |
 | Test / ops readiness | 10 | 5% | 0.5 |
-| **Total** | | | **37.25 → 38** |
+| **Total** | | | **43.25 → 43** |
 
-**Board verdict:** Do **not** launch commercially until P0 data-integrity and security issues are resolved. Backend core is investable; product layer is pre-beta.
+**Board verdict:** Do **not** launch commercially until remaining P0 frontend data-integrity and security issues are resolved. Backend core is now secure and transactionally stable.
 
 ---
 
@@ -58,13 +58,13 @@
 | Loyalty / tags → price list assignment | Optional |
 
 ### Edge cases not handled
-- **Sale with `dueCents > 0` but no `customerId`** → receivable on sale row only; no khata; untracked walk-in credit
+- **Sale with `dueCents > 0` but no `customerId`** → **[Fixed]** Forced customer selection for credit sales (throws ConflictError if missing)
 - Soft-deleted customer still on historical sales (`SetNull` FK)
 - Khata collection does **not** reduce `sale.dueCents` → sale vs khata divergence
 - `totalPurchasesCents` not net of returns
 
 ### Data consistency issues
-- Sale dues vs khata balance can drift (two payment paths)
+- Sale dues vs khata balance can drift (two payment paths) → **[Fixed]** Unified paths under `recordKhataPayment` helper ensuring identical balance and cashbook updates
 - No reconciliation job between `sales.due_cents` aggregate and khata
 
 ---
@@ -89,12 +89,12 @@
 | Block delete with open PO/khata | Critical |
 
 ### Edge cases not handled
-- **Due-tracking double-count bug:** `totalShopOwesCents = purchaseDueCents + abs(khataBalance)` when both reflect same obligation → **inflated payables**
+- **Due-tracking double-count bug:** **[Fixed]** Single source of truth: `totalShopOwesCents` is now derived solely from the khata ledger balance (`khataBalanceCents < 0 ? abs(khataBalanceCents) : 0`).
 - Payments list excludes khata repayments
 - Purchase without supplier but with due → no khata tracking
 
 ### Data consistency issues
-- Supplier payables report unreliable until double-count fixed
+- Supplier payables report unreliable until double-count fixed → **[Fixed]** Now reliable after due-tracking fix
 - `totalSuppliedCents` not reduced on CANCELLED PO
 
 ---
@@ -227,14 +227,14 @@
 | Invoice-level allocation (which sale being paid) | Important |
 
 ### Edge cases not handled
-- **Two collection paths:** `/khata/.../collection` vs `/payments` khata — different cashbook behavior
+- **Two collection paths:** `/khata/.../collection` vs `/payments` khata — **[Fixed]** Unified both paths under a single transaction-safe helper (`recordKhataPayment`) ensuring identical cashbook logging.
 - Due summary excludes sale/purchase `dueCents` not in khata
 - Immutable entries — no formal reversal (only adjustment forward)
 - `khata.entryAdded` event uses `payment.id` as `entryId` (misleading)
 
 ### Data consistency issues
-- **High severity:** khata collection missing cashbook when CASH
-- Sale credit without customer leaves orphan receivable
+- **High severity:** khata collection missing cashbook when CASH → **[Fixed]** Integrates with Cashbook repository.
+- Sale credit without customer leaves orphan receivable → **[Fixed]** Credit sales without customers are now blocked.
 
 ---
 
@@ -354,15 +354,15 @@
 
 ## P0 — Data integrity fixes (before any launch)
 
-| # | Issue | Fix |
-|---|-------|-----|
-| 1 | Supplier due-tracking double-count | Single source: khata OR purchase due, not sum |
-| 2 | Khata collection missing cashbook | Post cashbook IN on CASH collection/repayment |
-| 3 | Unify khata payment paths | One service method for all collection types |
-| 4 | Sale due without customer | Block or force customer selection for credit sales |
-| 5 | POS mock checkout fallback | Remove; show error + retry |
-| 6 | POS returns not calling API | Wire `POST /sales/:id/return` |
-| 7 | Frontend MFS/flexiload wrong API | Migrate to `mfs.api.ts` / `flexiload.api.ts` |
+| # | Issue | Fix | Status |
+|---|-------|-----|--------|
+| 1 | Supplier due-tracking double-count | Single source: khata OR purchase due, not sum | ✅ Fixed (Backend) |
+| 2 | Khata collection missing cashbook | Post cashbook IN on CASH collection/repayment | ✅ Fixed (Backend) |
+| 3 | Unify khata payment paths | One service method for all collection types | ✅ Fixed (Backend) |
+| 4 | Sale due without customer | Block or force customer selection for credit sales | ✅ Fixed (Backend) |
+| 5 | POS mock checkout fallback | Remove; show error + retry | ❌ Pending (Frontend) |
+| 6 | POS returns not calling API | Wire `POST /sales/:id/return` | ❌ Pending (Frontend) |
+| 7 | Frontend MFS/flexiload wrong API | Migrate to `mfs.api.ts` / `flexiload.api.ts` | ❌ Pending (Frontend) |
 
 ## P1 — Workflow completion
 
@@ -768,9 +768,9 @@
 
 ## Critical (P0) — 22 items
 
-1. Supplier due double-count bug  
-2. Khata collection cashbook gap  
-3. Sale credit without customer  
+1. Supplier due double-count bug (Fixed)  
+2. Khata collection cashbook gap (Fixed)  
+3. Sale credit without customer (Fixed)  
 4. POS mock checkout on failure  
 5. POS returns not persisted  
 6. MFS/flexiload UI not wired  

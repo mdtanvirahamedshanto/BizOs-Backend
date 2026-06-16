@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { NotFoundError, ConflictError } from '@/utils/errors';
 import { CashbookRepository } from './cashbook.repository';
+import { KhataRepository } from './khata.repository';
 
 export class PaymentRepository {
   constructor(private prisma: PrismaClient) {}
@@ -316,77 +317,14 @@ export class PaymentRepository {
       // 3. DIRECT PAYMENT POSTED TO KHATA
       // ==========================================
       if (data.payableType === 'khata') {
-        const khata = await tx.khataAccount.findFirst({
-          where: { id: data.payableId, shopId, isActive: true },
+        const khataRepo = new KhataRepository(tx);
+        const result = await khataRepo.recordKhataPayment(tx, shopId, data.payableId, userId, {
+          amountCents: data.amountCents,
+          method: data.method,
+          reference: data.reference,
+          notes: data.notes,
         });
-
-        if (!khata) {
-          throw new NotFoundError('Active Khata Account');
-        }
-
-        const isCustomer = khata.partyType === 'CUSTOMER';
-        const paymentType = isCustomer ? 'RECEIVED' : 'MADE';
-
-        // Adjust Khata balance
-        // Customer paying shop reduces ledger balance (-ve)
-        // Shop paying supplier increases ledger balance towards 0 (+ve)
-        const newBalance = isCustomer
-          ? khata.balanceCents - data.amountCents
-          : khata.balanceCents + data.amountCents;
-
-        const khataEntryType = isCustomer ? 'CREDIT' : 'DEBIT';
-
-        // Create Payment record
-        const payment = await tx.payment.create({
-          data: {
-            shopId,
-            type: paymentType,
-            method: data.method,
-            amountCents: data.amountCents,
-            payableType: 'khata',
-            payableId: khata.id,
-            reference: data.reference,
-            notes: data.notes || `Direct ledger payment recorded`,
-            recordedBy: userId,
-          },
-        });
-
-        // Log to Cashbook if method is CASH
-        if (data.method === 'CASH') {
-          await CashbookRepository.recordEntry(tx, shopId, {
-            type: isCustomer ? 'IN' : 'OUT',
-            amountCents: data.amountCents,
-            description: isCustomer
-              ? `Customer khata collection: ${data.notes || 'No notes'}`
-              : `Supplier khata repayment payout: ${data.notes || 'No notes'}`,
-            referenceType: 'payment',
-            referenceId: payment.id,
-            recordedBy: userId,
-          });
-        }
-
-        // Update Khata Account
-        await tx.khataAccount.update({
-          where: { id: khata.id },
-          data: { balanceCents: newBalance },
-        });
-
-        // Create Khata Entry
-        await tx.khataEntry.create({
-          data: {
-            shopId,
-            khataAccountId: khata.id,
-            type: khataEntryType,
-            amountCents: data.amountCents,
-            runningBalanceCents: newBalance,
-            description: data.notes || `Direct cash ledger transaction`,
-            referenceType: 'payment',
-            referenceId: payment.id,
-            recordedBy: userId,
-          },
-        });
-
-        return payment;
+        return result.payment;
       }
 
       throw new ConflictError('Invalid payable type specified');

@@ -94,6 +94,10 @@ export class SalesService {
     }
     const dueCents = totalCents - paidCents;
 
+    if (dueCents > 0 && !dto.customerId) {
+      throw new ConflictError('A customer must be selected for credit sales (sales with outstanding due)');
+    }
+
     let paymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERPAID' = 'UNPAID';
     if (totalCents > 0) {
       if (dueCents === 0) {

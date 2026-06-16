@@ -132,7 +132,7 @@ export class SupplierService {
     const khataBalanceCents = khataAccount ? khataAccount.balanceCents : 0;
     // Semantics: -ve = shop owes the party (payable), +ve = party owes shop (receivable).
     // Total shop obligations (shop owes supplier): purchase due + absolute value of negative khata balance.
-    const totalShopOwesCents = purchaseDueCents + (khataBalanceCents < 0 ? Math.abs(khataBalanceCents) : 0);
+    const totalShopOwesCents = khataBalanceCents < 0 ? Math.abs(khataBalanceCents) : 0;
 
     return success({
       supplierId: supplier.id,

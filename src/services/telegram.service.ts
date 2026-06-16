@@ -5,7 +5,7 @@ import { success, failure, type ServiceResult } from '@/types/service';
 import { NotFoundError, ConflictError } from '@/utils/errors';
 import { TelegramRepository } from '@/repositories/telegram.repository';
 import { TelegramEntryService } from '@/services/telegramEntry.service';
-import { parseNaturalLanguageEntry, type ParsedEntry } from '@/bot/nlp/parser';
+import { parseNaturalLanguageEntry, type ParsedEntry, getParserHelpText } from '@/bot/nlp/parser';
 import { AuditService } from '@/services/audit.service';
 
 export interface TelegramLinkContext {
@@ -277,7 +277,7 @@ export class TelegramService {
     const commandCounts = new Map<string, number>();
     for (const msg of recent) {
       const text = msg.messageText.trim();
-      const cmd = text.startsWith('/') ? text.split(/\s+/)[0] : 'nlp';
+      const cmd = (text.startsWith('/') ? text.split(/\s+/)[0] : 'nlp') || 'nlp';
       commandCounts.set(cmd, (commandCounts.get(cmd) ?? 0) + 1);
     }
 
