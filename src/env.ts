@@ -92,6 +92,16 @@ const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_BOT_USERNAME: z.string().optional(),
   TELEGRAM_LINK_TTL_SEC: z.coerce.number().default(900),
+
+  // Platform super-admin (above-tenant access)
+  // Comma-separated allowlist of emails permitted to use /api/v1/platform/*.
+  // If empty, any user holding the '*' wildcard permission is allowed (dev-friendly).
+  PLATFORM_ADMIN_EMAILS: z.string().default(''),
+
+  // Database backups
+  BACKUP_DIR: z.string().optional(), // defaults to <cwd>/backups
+  PG_DUMP_PATH: z.string().default('pg_dump'), // override with absolute path on Windows if needed
+  BACKUP_RETENTION_COUNT: z.coerce.number().min(1).max(365).default(30),
 });
 
 export type Env = z.infer<typeof envSchema> & {

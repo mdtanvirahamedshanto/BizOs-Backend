@@ -3,6 +3,7 @@ export { authenticate } from './authenticate';
 export { authorize } from './authorize';
 export { rateLimiter, strictRateLimiter } from './rateLimiter';
 export { tenantContext } from './tenantContext';
+export { requirePlatformAdmin, isPlatformAdmin } from './requirePlatformAdmin';
 export { validate } from './validate';
 export { idempotency } from './idempotency';
 export { errorHandler } from './errorHandler';

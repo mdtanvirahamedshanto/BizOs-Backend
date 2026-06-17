@@ -19,6 +19,7 @@ import { telegramRoutes } from './telegram.routes';
 import { auditRoutes } from './audit.routes';
 import { uploadRoutes } from './upload.routes';
 import { userRoutes } from './user.routes';
+import { platformRoutes } from './platform.routes';
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.use('/telegram', telegramRoutes);
 router.use('/audit', auditRoutes);
 router.use('/uploads', uploadRoutes);
 router.use('/users', userRoutes);
+router.use('/platform', platformRoutes);
 
 // Example route for now
 router.get('/status', (_req, res) => {
