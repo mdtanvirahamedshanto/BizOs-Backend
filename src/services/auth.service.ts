@@ -90,6 +90,11 @@ export class AuthService {
       throw new UnauthorizedError('Invalid email or password');
     }
 
+    // When the caller does not supply a shopId (e.g. email-only login from the
+    // mobile app), fall back to the shop the resolved user belongs to so the
+    // issued token always carries a valid tenant claim.
+    const effectiveShopId = shopId || user.shopId;
+
     // Extract permissions
     const permissions = user.userRoles.flatMap((ur: any) =>
       ur.role.rolePermissions.map((rp: any) => `${rp.permission.resource}.${rp.permission.action}`)
@@ -99,13 +104,13 @@ export class AuthService {
     const hasOwnerOrSuperAdmin = user.userRoles.some((ur: any) => ur.role.name === 'Owner' || ur.role.name === 'SuperAdmin');
     const activePermissions = hasOwnerOrSuperAdmin ? ['*'] : permissions;
 
-    const tokens = await this.generateTokens(user.id, shopId, user.email, activePermissions);
+    const tokens = await this.generateTokens(user.id, effectiveShopId, user.email, activePermissions);
 
     await this.authRepo.updateLastLogin(user.id);
 
     // Trigger events
     authEvents.userLogin({
-      shopId,
+      shopId: effectiveShopId,
       userId: user.id,
       email: user.email,
       ipAddress: meta?.ipAddress,
@@ -114,7 +119,7 @@ export class AuthService {
 
     // Write audit log
     await AuditService.log({
-      shopId,
+      shopId: effectiveShopId,
       userId: user.id,
       action: 'auth.login',
       entity: 'users',
@@ -123,12 +128,12 @@ export class AuthService {
       userAgent: meta?.userAgent,
     });
 
-    log.info({ userId: user.id, shopId }, 'User logged in');
+    log.info({ userId: user.id, shopId: effectiveShopId }, 'User logged in');
 
     return success({
       user: {
         id: user.id,
-        shopId,
+        shopId: effectiveShopId,
         email: user.email,
         name: user.name,
         permissions: activePermissions,
