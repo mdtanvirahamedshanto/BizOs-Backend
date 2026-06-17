@@ -121,7 +121,12 @@ export class AuthController {
 
   me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      sendSuccess(res, req.user);
+      const result = await this.authService.getProfile(req.user!.id, req.user!.shopId);
+      if (result.success) {
+        sendSuccess(res, result.data);
+      } else {
+        res.status(404).json({ success: false, error: result.error });
+      }
     } catch (err) {
       next(err);
     }

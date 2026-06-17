@@ -406,6 +406,31 @@ export class AuthService {
     });
   }
 
+  async getProfile(userId: string, shopId: string): Promise<ServiceResult<AuthResult['user']>> {
+    const user = await this.authRepo.findUserById(userId);
+
+    if (!user || user.shopId !== shopId || user.deletedAt) {
+      throw new NotFoundError('User not found');
+    }
+
+    const permissions = user.userRoles.flatMap((ur: any) =>
+      ur.role.rolePermissions.map((rp: any) => `${rp.permission.resource}.${rp.permission.action}`),
+    );
+
+    const hasOwnerOrSuperAdmin = user.userRoles.some(
+      (ur: any) => ur.role.name === 'Owner' || ur.role.name === 'SuperAdmin',
+    );
+    const activePermissions = hasOwnerOrSuperAdmin ? ['*'] : permissions;
+
+    return success({
+      id: user.id,
+      shopId: user.shopId,
+      email: user.email,
+      name: user.name,
+      permissions: activePermissions,
+    });
+  }
+
   private async generateTokens(
     userId: string,
     shopId: string,
