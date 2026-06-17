@@ -7,6 +7,7 @@ import { authenticate } from '@/middlewares/authenticate';
 import { tenantContext } from '@/middlewares/tenantContext';
 import { authorize } from '@/middlewares/authorize';
 import { validate } from '@/middlewares/validate';
+import { idempotency } from '@/middlewares/idempotency';
 import {
   khataQuerySchema,
   khataEntryQuerySchema,
@@ -33,8 +34,8 @@ router.get('/accounts', authorize('khata.read'), validate(khataQuerySchema, 'que
 router.get('/accounts/:id', authorize('khata.read'), khataController.getAccount);
 router.get('/accounts/:id/entries', authorize('khata.read'), validate(khataEntryQuerySchema, 'query'), khataController.listEntries);
 
-router.post('/accounts/:id/collection', authorize('khata.write'), validate(createCollectionSchema), khataController.recordCollection);
-router.post('/accounts/:id/repayment', authorize('khata.write'), validate(createRepaymentSchema), khataController.recordRepayment);
+router.post('/accounts/:id/collection', authorize('khata.write'), validate(createCollectionSchema), idempotency(), khataController.recordCollection);
+router.post('/accounts/:id/repayment', authorize('khata.write'), validate(createRepaymentSchema), idempotency(), khataController.recordRepayment);
 router.post('/accounts/:id/adjustments', authorize('khata.update'), validate(khataAdjustmentSchema), khataController.recordAdjustment);
 
 export const khataRoutes = router;

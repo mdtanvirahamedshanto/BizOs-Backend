@@ -7,6 +7,7 @@ import { authenticate } from '@/middlewares/authenticate';
 import { tenantContext } from '@/middlewares/tenantContext';
 import { authorize } from '@/middlewares/authorize';
 import { validate } from '@/middlewares/validate';
+import { idempotency } from '@/middlewares/idempotency';
 import {
   manualCashEntrySchema,
   dailyClosingSchema,
@@ -25,6 +26,7 @@ router.post(
   '/cash-in',
   authorize('cashbook.write'),
   validate(manualCashEntrySchema),
+  idempotency(),
   cashbookController.recordCashIn
 );
 
@@ -32,6 +34,7 @@ router.post(
   '/cash-out',
   authorize('cashbook.write'),
   validate(manualCashEntrySchema),
+  idempotency(),
   cashbookController.recordCashOut
 );
 

@@ -7,6 +7,7 @@ import { authenticate } from '@/middlewares/authenticate';
 import { tenantContext } from '@/middlewares/tenantContext';
 import { authorize } from '@/middlewares/authorize';
 import { validate } from '@/middlewares/validate';
+import { idempotency } from '@/middlewares/idempotency';
 import {
   createCategorySchema,
   updateCategorySchema,
@@ -48,7 +49,7 @@ productRouter.get('/', authorize('products.read'), validate(productQuerySchema, 
 productRouter.get('/brands', authorize('products.read'), productController.getBrands);
 productRouter.get('/units', authorize('products.read'), productController.getUnits);
 productRouter.get('/:id/stock-movements', authorize('products.read'), validate(stockMovementQuerySchema, 'query'), productController.listStockMovements);
-productRouter.post('/:id/stock-adjustments', authorize('products.update'), validate(stockAdjustmentSchema), productController.adjustStock);
+productRouter.post('/:id/stock-adjustments', authorize('products.update'), validate(stockAdjustmentSchema), idempotency(), productController.adjustStock);
 productRouter.get('/:id', authorize('products.read'), productController.getProduct);
 productRouter.put('/:id', authorize('products.update'), validate(updateProductSchema), productController.updateProduct);
 productRouter.delete('/:id', authorize('products.delete'), productController.deleteProduct);
