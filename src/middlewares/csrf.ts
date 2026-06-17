@@ -32,6 +32,22 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
     return;
   }
 
+  // Skip CSRF for public authentication/reset endpoints
+  const publicAuthPaths = [
+    '/api/v1/auth/register',
+    '/api/v1/auth/login',
+    '/api/v1/auth/refresh',
+    '/api/v1/auth/password-reset/request',
+    '/api/v1/auth/password-reset/confirm',
+    '/api/v1/auth/otp/request',
+    '/api/v1/auth/otp/verify',
+  ];
+  if (publicAuthPaths.includes(req.path)) {
+    next();
+    return;
+  }
+
+
   const csrfCookie = req.cookies['_csrf'];
   const csrfHeader = req.headers['x-csrf-token'] as string;
 
