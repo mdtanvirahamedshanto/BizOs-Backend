@@ -14,7 +14,7 @@ export const rateLimiter = rateLimit({
       redis.call(args[0]!, ...args.slice(1)) as never,
   }),
   windowMs: env.RATE_LIMIT_WINDOW_MS,
-  max: env.RATE_LIMIT_MAX_REQUESTS,
+  max: env.NODE_ENV === 'development' ? 10000 : env.RATE_LIMIT_MAX_REQUESTS,
   standardHeaders: true,  // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false,   // Disable `X-RateLimit-*` headers
   message: {
@@ -37,13 +37,14 @@ export const rateLimiter = rateLimit({
  * Usage: router.post('/login', strictRateLimiter(5, 15 * 60 * 1000), controller.login);
  */
 export function strictRateLimiter(maxRequests: number, windowMs: number) {
+  const max = env.NODE_ENV === 'development' ? 1000 : maxRequests;
   return rateLimit({
     store: new RedisStore({
       sendCommand: (...args: string[]) =>
         redis.call(args[0]!, ...args.slice(1)) as never,
     }),
     windowMs,
-    max: maxRequests,
+    max,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
