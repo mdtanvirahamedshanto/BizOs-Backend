@@ -187,8 +187,8 @@ async function main() {
 
   // 4. Seed Demo Owner User
   console.log('  Seeding demo owner user...');
-  const passwordHash = await bcrypt.hash('password123', 10);
-  const ownerEmail = 'owner@bizos.app';
+  const passwordHash = await bcrypt.hash('admin123', 10);
+  const ownerEmail = 'admin@gmail.com';
   const user = await prisma.user.upsert({
     where: {
       shopId_email: {
