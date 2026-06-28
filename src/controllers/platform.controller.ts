@@ -146,4 +146,14 @@ export class PlatformController {
       next(err);
     }
   };
+
+  updatePlan = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const data = await this.platformService.updatePlan(id, req.body);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

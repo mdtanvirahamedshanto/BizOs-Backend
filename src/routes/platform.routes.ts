@@ -31,5 +31,6 @@ router.get('/flags', platformController.getFlags);
 router.post('/flags/:key', platformController.toggleFlag);
 router.get('/monitoring', platformController.getMonitoringStats);
 router.get('/plans', platformController.getPlans);
+router.put('/plans/:id', platformController.updatePlan);
 
 export const platformRoutes = router;

@@ -168,6 +168,7 @@ model Shop {
   mfsTransactions        MfsTransaction[]
   flexiloadAccounts      FlexiloadAccount[]
   flexiloadTransactions  FlexiloadTransaction[]
+  tenantSubscriptions    TenantSubscription[]
 
   @@map("shops")
 }
@@ -1164,4 +1165,39 @@ model FeatureFlag {
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("feature_flags")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUBSCRIPTION AND BILLING MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SubscriptionPlan {
+  id                   String     @id @db.VarChar(50) // e.g. 'free', 'basic', 'premium'
+  name                 String     @db.VarChar(200)
+  priceMonthly         Int        @default(0) @map("price_monthly")
+  priceYearly          Int        @default(0) @map("price_yearly")
+  maxProductsLimit     Int?       @map("max_products_limit") // null means unlimited
+  maxTransactionsLimit Int?       @map("max_transactions_limit") // null means unlimited
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  subscriptions        TenantSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model TenantSubscription {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId           String           @map("shop_id") @db.Uuid
+  planId           String           @map("plan_id") @db.VarChar(50)
+  status           String           @default("active") @db.VarChar(50) // active, cancelled, expired
+  startDate        DateTime         @default(now()) @map("start_date") @db.Timestamptz
+  endDate          DateTime?        @map("end_date") @db.Timestamptz
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  shop             Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  plan             SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@map("tenant_subscriptions")
 }

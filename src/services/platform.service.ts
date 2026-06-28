@@ -512,10 +512,51 @@ export class PlatformService {
   }
 
   async getPlans() {
-    return [
-      { id: 'free', name: 'ফ্রি ট্রায়াল (Free Trial)', priceMonthly: 0, priceYearly: 0, activeSubscriptionsCount: await prisma.shop.count({ where: { deletedAt: null, plan: 'FREE' } }), maxProductsLimit: 50, maxTransactionsLimit: 100 },
-      { id: 'basic', name: 'বেসিক স্টোর (Starter Store)', priceMonthly: 500, priceYearly: 5000, activeSubscriptionsCount: await prisma.shop.count({ where: { deletedAt: null, plan: 'STARTER' } }), maxProductsLimit: 500, maxTransactionsLimit: 1000 },
-      { id: 'premium', name: 'প্রিমিয়াম বিআইজেড (Premium Biz)', priceMonthly: 1500, priceYearly: 15000, activeSubscriptionsCount: await prisma.shop.count({ where: { deletedAt: null, plan: { in: ['PROFESSIONAL', 'ENTERPRISE'] } } }), maxProductsLimit: 'unlimited', maxTransactionsLimit: 'unlimited' },
-    ];
+    let plans = await prisma.subscriptionPlan.findMany({ orderBy: { priceMonthly: 'asc' } });
+    if (plans.length === 0) {
+      // Seed plans if empty
+      await prisma.subscriptionPlan.createMany({
+        data: [
+          { id: 'free', name: 'ফ্রি ট্রায়াল (Free Trial)', priceMonthly: 0, priceYearly: 0, maxProductsLimit: 50, maxTransactionsLimit: 100 },
+          { id: 'basic', name: 'বেসিক স্টোর (Starter Store)', priceMonthly: 500, priceYearly: 5000, maxProductsLimit: 500, maxTransactionsLimit: 1000 },
+          { id: 'premium', name: 'প্রিমিয়াম বিআইজেড (Premium Biz)', priceMonthly: 1500, priceYearly: 15000, maxProductsLimit: null, maxTransactionsLimit: null },
+        ]
+      });
+      plans = await prisma.subscriptionPlan.findMany({ orderBy: { priceMonthly: 'asc' } });
+    }
+
+    const activeCounts = await prisma.shop.groupBy({
+      by: ['plan'],
+      _count: true,
+      where: { deletedAt: null }
+    });
+
+    return plans.map(p => {
+      let planEnum = 'FREE';
+      if (p.id === 'basic') planEnum = 'STARTER';
+      if (p.id === 'premium') planEnum = 'PROFESSIONAL'; // Or ENTERPRISE
+
+      let count = activeCounts.find(c => c.plan === planEnum)?._count || 0;
+      if (p.id === 'premium') {
+        count += activeCounts.find(c => c.plan === 'ENTERPRISE')?._count || 0;
+      }
+
+      return {
+        id: p.id,
+        name: p.name,
+        priceMonthly: p.priceMonthly,
+        priceYearly: p.priceYearly,
+        activeSubscriptionsCount: count,
+        maxProductsLimit: p.maxProductsLimit ?? 'unlimited',
+        maxTransactionsLimit: p.maxTransactionsLimit ?? 'unlimited'
+      };
+    });
+  }
+
+  async updatePlan(id: string, data: { name?: string; priceMonthly?: number; priceYearly?: number; maxProductsLimit?: number | null; maxTransactionsLimit?: number | null }) {
+    return prisma.subscriptionPlan.update({
+      where: { id },
+      data
+    });
   }
 }

@@ -20,6 +20,7 @@ import { auditRoutes } from './audit.routes';
 import { uploadRoutes } from './upload.routes';
 import { userRoutes } from './user.routes';
 import { platformRoutes } from './platform.routes';
+import { billingRoutes } from './billing.routes';
 
 const router = Router();
 
@@ -44,6 +45,7 @@ router.use('/audit', auditRoutes);
 router.use('/uploads', uploadRoutes);
 router.use('/users', userRoutes);
 router.use('/platform', platformRoutes);
+router.use('/billing', billingRoutes);
 
 // Example route for now
 router.get('/status', (_req, res) => {
