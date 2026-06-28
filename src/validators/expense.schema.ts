@@ -56,7 +56,7 @@ export const expenseQuerySchema = z.object({
   startDate: z.preprocess((val) => (typeof val === 'string' ? new Date(val) : val), z.date().optional()),
   endDate: z.preprocess((val) => (typeof val === 'string' ? new Date(val) : val), z.date().optional()),
   search: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
@@ -69,7 +69,7 @@ export const recurringExpenseQuerySchema = z.object({
     return val;
   }, z.boolean().optional()),
   search: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
 });
 

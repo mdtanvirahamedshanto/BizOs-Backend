@@ -13,7 +13,7 @@ export const updateCategorySchema = createCategorySchema.partial();
 export const categoryQuerySchema = z.object({
   search: z.string().optional(),
   parentId: z.string().uuid().optional().nullable().or(z.literal('null')),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
@@ -54,7 +54,7 @@ export const productQuerySchema = z.object({
     if (val === 'false') return false;
     return val;
   }, z.boolean().optional()),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
@@ -69,7 +69,7 @@ export type UpdateProductDTO = z.infer<typeof updateProductSchema>;
 export type ProductQueryDTO = z.infer<typeof productQuerySchema>;
 
 export const stockMovementQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
 });
 

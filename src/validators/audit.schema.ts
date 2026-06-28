@@ -12,7 +12,7 @@ export const auditQuerySchema = z.object({
   userId: z.string().uuid().optional(),
   startDate: isoDatePreprocess,
   endDate: isoDatePreprocess,
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
   sortBy: z.enum(['createdAt']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

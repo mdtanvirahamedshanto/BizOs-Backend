@@ -25,7 +25,7 @@ export const paymentQuerySchema = z.object({
   payableId: z.string().uuid('Invalid payable ID').optional(),
   type: z.enum(['RECEIVED', 'MADE']).optional(),
   method: paymentMethodSchema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

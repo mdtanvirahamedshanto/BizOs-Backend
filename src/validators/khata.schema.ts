@@ -18,14 +18,14 @@ export const khataQuerySchema = z.object({
     if (val === 'false') return false;
     return val;
   }, z.boolean().optional()),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
 export const khataEntryQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
 });
 

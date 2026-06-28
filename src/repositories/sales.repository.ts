@@ -3,7 +3,7 @@ import { NotFoundError, ConflictError } from '@/utils/errors';
 import { CashbookRepository } from './cashbook.repository';
 
 export class SalesRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   async findById(shopId: string, id: string) {
     return this.prisma.sale.findFirst({
@@ -313,7 +313,7 @@ export class SalesRepository {
       }
 
       return sale;
-    });
+    }, { timeout: 20000 });
   }
 
   async processReturn(

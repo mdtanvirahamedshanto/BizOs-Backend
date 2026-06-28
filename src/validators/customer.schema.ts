@@ -29,7 +29,7 @@ export const updateCustomerSchema = createCustomerSchema.partial();
 
 export const customerQuerySchema = z.object({
   search: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
   cursor: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
