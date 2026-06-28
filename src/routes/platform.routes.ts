@@ -21,4 +21,15 @@ router.post('/backups', platformController.createBackup);
 router.get('/backups/:name/download', platformController.downloadBackup);
 router.delete('/backups/:name', platformController.deleteBackup);
 
+// ── Admin Dashboard Routes ──────────────────────────────────────────────────
+router.get('/overview', platformController.getAdminOverview);
+router.get('/tenants', platformController.listTenants);
+router.post('/tenants/:id/status', platformController.updateTenantStatus);
+router.get('/tickets', platformController.getTickets);
+router.post('/tickets/:id/resolve', platformController.resolveTicket);
+router.get('/flags', platformController.getFlags);
+router.post('/flags/:key', platformController.toggleFlag);
+router.get('/monitoring', platformController.getMonitoringStats);
+router.get('/plans', platformController.getPlans);
+
 export const platformRoutes = router;

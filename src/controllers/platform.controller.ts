@@ -60,4 +60,90 @@ export class PlatformController {
       next(err);
     }
   };
+
+  getAdminOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.platformService.getAdminOverview();
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  listTenants = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { search, status } = req.query;
+      const data = await this.platformService.listTenants(search as string, status as string);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateTenantStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { status } = req.body;
+      const data = await this.platformService.updateTenantStatus(req.params.id as string, status);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getTickets = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { status } = req.query;
+      const data = await this.platformService.getTickets(status as string);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  resolveTicket = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { replyMessage, nextStatus } = req.body;
+      const data = await this.platformService.resolveTicket(req.params.id as string, replyMessage, nextStatus);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getFlags = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.platformService.getFlags();
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  toggleFlag = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { enabled } = req.body;
+      const data = await this.platformService.toggleFlag(req.params.key as string, enabled);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getMonitoringStats = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.platformService.getMonitoringStats();
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getPlans = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.platformService.getPlans();
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

@@ -163,6 +163,7 @@ model Shop {
   recurringExpenses  RecurringExpense[]
   cashbookEntries    CashbookEntry[]
   dailyClosings      DailyClosing[]
+  supportTickets     SupportTicket[]
   mfsAccounts            MfsAccount[]
   mfsTransactions        MfsTransaction[]
   flexiloadAccounts      FlexiloadAccount[]
@@ -1120,4 +1121,47 @@ model FlexiloadTransaction {
   @@index([shopId, createdAt])
   @@index([shopId, accountId])
   @@map("flexiload_transactions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATFORM ADMIN MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SupportTicket {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId           String?       @map("shop_id") @db.Uuid
+  subject          String        @db.VarChar(255)
+  issueDescription String        @map("issue_description")
+  priority         String        @default("medium") @db.VarChar(50)
+  status           String        @default("open") @db.VarChar(50)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  shop             Shop?         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  replies          TicketReply[]
+
+  @@map("support_tickets")
+}
+
+model TicketReply {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId    String        @map("ticket_id") @db.Uuid
+  sender      String        @db.VarChar(50) // 'merchant' or 'admin'
+  message     String
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_replies")
+}
+
+model FeatureFlag {
+  key         String   @id @db.VarChar(100)
+  label       String   @db.VarChar(200)
+  description String?
+  enabled     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("feature_flags")
 }

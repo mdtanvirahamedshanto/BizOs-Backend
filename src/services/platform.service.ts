@@ -370,4 +370,152 @@ export class PlatformService {
       durationMs: Date.now() - start,
     };
   }
+
+  // ── Admin Dashboard Functionality ──────────────────────────────────────────
+
+  async getAdminOverview() {
+    // Simplified version of getStats tailored for the frontend overview dashboard
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    const [activePaidShops, totalShops, lastMonthShops] = await Promise.all([
+      prisma.shop.count({ where: { deletedAt: null, status: 'ACTIVE', plan: { in: ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] } } }),
+      prisma.shop.count({ where: { deletedAt: null } }),
+      prisma.shop.count({ where: { deletedAt: null, createdAt: { lt: lastMonth } } }),
+    ]);
+
+    // Rough calculation for demo purpose since we don't track recurring payments yet
+    const mrr = activePaidShops * 1500;
+    const arr = mrr * 12;
+
+    const growthRate = lastMonthShops === 0 ? 0 : ((totalShops - lastMonthShops) / lastMonthShops) * 100;
+
+    // Dummy revenue chart data
+    const revenueChartData = [
+      { month: 'জানুয়ারি', revenue: Math.round(mrr * 0.8) },
+      { month: 'ফেব্রুয়ারি', revenue: Math.round(mrr * 0.9) },
+      { month: 'মার্চ', revenue: Math.round(mrr * 0.95) },
+      { month: 'এপ্রিল', revenue: Math.round(mrr * 1.1) },
+      { month: 'মে', revenue: Math.round(mrr * 1.2) },
+      { month: 'জুন', revenue: mrr },
+    ];
+
+    return {
+      mrr,
+      arr,
+      activePaidSubscriptions: activePaidShops,
+      merchantGrowthRate: growthRate,
+      revenueChartData,
+    };
+  }
+
+  async listTenants(search: string, status: string) {
+    const whereClause: any = { deletedAt: null };
+    if (status && status !== 'all') {
+      whereClause.status = status.toUpperCase();
+    }
+    if (search) {
+      whereClause.name = { contains: search, mode: 'insensitive' };
+    }
+
+    const shops = await prisma.shop.findMany({
+      where: whereClause,
+      include: { users: { take: 1, orderBy: { createdAt: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return shops.map(shop => ({
+      id: shop.id,
+      merchantName: shop.name,
+      ownerName: shop.users[0]?.name || 'অজানা',
+      phone: shop.phone || shop.users[0]?.phone || 'অজানা',
+      type: 'grocery', // Mocked until shop.type exists
+      status: shop.status.toLowerCase(),
+      currentPlan: shop.plan.toLowerCase(),
+      subscriptionExpiry: '2027-12-31',
+      usersCount: 1,
+      createdAt: shop.createdAt.toISOString().substring(0, 10),
+    }));
+  }
+
+  async updateTenantStatus(tenantId: string, status: string) {
+    const shop = await prisma.shop.update({
+      where: { id: tenantId },
+      data: { status: status.toUpperCase() as any },
+    });
+    return { id: shop.id, status: shop.status.toLowerCase() };
+  }
+
+  async getTickets(status: string) {
+    const whereClause: any = {};
+    if (status && status !== 'all') {
+      whereClause.status = status;
+    }
+    const tickets = await prisma.supportTicket.findMany({
+      where: whereClause,
+      include: { shop: true, replies: { orderBy: { createdAt: 'asc' } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    return tickets.map(t => ({
+      id: t.id,
+      tenantName: t.shop?.name || 'Unknown',
+      subject: t.subject,
+      issueDescription: t.issueDescription,
+      priority: t.priority,
+      status: t.status,
+      timestamp: t.createdAt.toISOString().substring(0, 16).replace('T', ' '),
+      replies: t.replies.map(r => ({
+        sender: r.sender,
+        message: r.message,
+        timestamp: r.createdAt.toISOString().substring(0, 16).replace('T', ' ')
+      }))
+    }));
+  }
+
+  async resolveTicket(ticketId: string, replyMessage: string, nextStatus?: string) {
+    if (replyMessage) {
+      await prisma.ticketReply.create({
+        data: { ticketId, sender: 'admin', message: replyMessage }
+      });
+    }
+    if (nextStatus) {
+      await prisma.supportTicket.update({ where: { id: ticketId }, data: { status: nextStatus } });
+    }
+    return this.getTickets('all').then(res => res.find(t => t.id === ticketId));
+  }
+
+  async getFlags() {
+    return prisma.featureFlag.findMany({ orderBy: { key: 'asc' } });
+  }
+
+  async toggleFlag(key: string, enabled: boolean) {
+    return prisma.featureFlag.upsert({ 
+      where: { key }, 
+      create: { key, label: key, enabled }, 
+      update: { enabled } 
+    });
+  }
+
+  async getMonitoringStats() {
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const sysMemUsedPct = Math.round(((totalMem - freeMem) / totalMem) * 100);
+
+    // Simplified dummy data for demo, mixing real node stats with placeholders
+    return {
+      cpuUsage: Math.floor(15 + Math.random() * 25), // Mock cpu usage %
+      memoryUsage: sysMemUsedPct,
+      apiLatency: Math.floor(12 + Math.random() * 15),
+      websocketConnections: 124 + Math.floor(Math.random() * 8),
+      backgroundJobsCount: Math.floor(Math.random() * 5),
+    };
+  }
+
+  async getPlans() {
+    return [
+      { id: 'free', name: 'ফ্রি ট্রায়াল (Free Trial)', priceMonthly: 0, priceYearly: 0, activeSubscriptionsCount: await prisma.shop.count({ where: { deletedAt: null, plan: 'FREE' } }), maxProductsLimit: 50, maxTransactionsLimit: 100 },
+      { id: 'basic', name: 'বেসিক স্টোর (Starter Store)', priceMonthly: 500, priceYearly: 5000, activeSubscriptionsCount: await prisma.shop.count({ where: { deletedAt: null, plan: 'STARTER' } }), maxProductsLimit: 500, maxTransactionsLimit: 1000 },
+      { id: 'premium', name: 'প্রিমিয়াম বিআইজেড (Premium Biz)', priceMonthly: 1500, priceYearly: 15000, activeSubscriptionsCount: await prisma.shop.count({ where: { deletedAt: null, plan: { in: ['PROFESSIONAL', 'ENTERPRISE'] } } }), maxProductsLimit: 'unlimited', maxTransactionsLimit: 'unlimited' },
+    ];
+  }
 }
