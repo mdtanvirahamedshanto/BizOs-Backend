@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
@@ -13,6 +14,9 @@ import apiRouter from '@/routes';
 import { createDocsRouter } from '@/routes/docs.routes';
 
 const app = express();
+
+// ─── Static Files ─────────────────────────────────────────
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
 // ─── Security & Utility Middlewares ───────────────────────
 app.use(

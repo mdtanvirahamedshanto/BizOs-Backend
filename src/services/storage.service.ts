@@ -1,14 +1,9 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { env } from '@/env';
 import { ConflictError } from '@/utils/errors';
 import { createModuleLogger } from '@/config/logger';
+import path from 'path';
+import fs from 'fs/promises';
 
 const log = createModuleLogger('storage');
 
@@ -31,36 +26,11 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
 ]);
 
+const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
+
 export class StorageService {
-  private client: S3Client | null = null;
-
-  private getClient(): S3Client {
-    if (!this.isConfigured()) {
-      throw new ConflictError('File storage is not configured. Set STORAGE_* environment variables.');
-    }
-
-    if (!this.client) {
-      this.client = new S3Client({
-        region: env.STORAGE_REGION,
-        endpoint: env.STORAGE_ENDPOINT,
-        forcePathStyle: true,
-        credentials: {
-          accessKeyId: env.STORAGE_ACCESS_KEY!,
-          secretAccessKey: env.STORAGE_SECRET_KEY!,
-        },
-      });
-    }
-
-    return this.client;
-  }
-
   isConfigured(): boolean {
-    return Boolean(
-      env.STORAGE_ENDPOINT &&
-        env.STORAGE_ACCESS_KEY &&
-        env.STORAGE_SECRET_KEY &&
-        env.STORAGE_BUCKET,
-    );
+    return true; // Always configured for local storage
   }
 
   validateMimeType(mimeType: string): void {
@@ -81,12 +51,8 @@ export class StorageService {
   }
 
   getPublicUrl(key: string): string {
-    if (env.STORAGE_PUBLIC_BASE_URL) {
-      return `${env.STORAGE_PUBLIC_BASE_URL.replace(/\/$/, '')}/${key}`;
-    }
-
-    const endpoint = env.STORAGE_ENDPOINT!.replace(/\/$/, '');
-    return `${endpoint}/${env.STORAGE_BUCKET}/${key}`;
+    const baseUrl = env.APP_URL.replace(/\/$/, '');
+    return `${baseUrl}/uploads/${key}`;
   }
 
   async upload(
@@ -97,24 +63,20 @@ export class StorageService {
     this.validateMimeType(file.mimetype);
 
     const key = this.buildObjectKey(shopId, folder, file.originalname);
-    const client = this.getClient();
+    const fullPath = path.join(UPLOADS_DIR, key);
+    
+    // Ensure directory exists
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+    
+    // Write file to disk
+    await fs.writeFile(fullPath, file.buffer);
 
-    await client.send(
-      new PutObjectCommand({
-        Bucket: env.STORAGE_BUCKET,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        ContentLength: file.size,
-      }),
-    );
-
-    log.info({ shopId, key, size: file.size, mimeType: file.mimetype }, 'File uploaded');
+    log.info({ shopId, key, size: file.size, mimeType: file.mimetype }, 'File uploaded locally');
 
     return {
       key,
       url: this.getPublicUrl(key),
-      bucket: env.STORAGE_BUCKET,
+      bucket: 'local-uploads', // Kept for backwards compatibility
       mimeType: file.mimetype,
       size: file.size,
       originalName: file.originalname,
@@ -123,30 +85,24 @@ export class StorageService {
 
   async delete(shopId: string, key: string): Promise<void> {
     this.assertKeyBelongsToShop(shopId, key);
-    const client = this.getClient();
-
-    await client.send(
-      new DeleteObjectCommand({
-        Bucket: env.STORAGE_BUCKET,
-        Key: key,
-      }),
-    );
-
-    log.info({ shopId, key }, 'File deleted');
+    
+    const fullPath = path.join(UPLOADS_DIR, key);
+    
+    try {
+      await fs.unlink(fullPath);
+      log.info({ shopId, key }, 'File deleted locally');
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        throw err;
+      }
+      log.warn({ shopId, key }, 'File to delete was not found on disk');
+    }
   }
 
   async getPresignedDownloadUrl(shopId: string, key: string, expiresIn = 3600): Promise<string> {
     this.assertKeyBelongsToShop(shopId, key);
-    const client = this.getClient();
-
-    return getSignedUrl(
-      client,
-      new GetObjectCommand({
-        Bucket: env.STORAGE_BUCKET,
-        Key: key,
-      }),
-      { expiresIn },
-    );
+    // For local storage, public URLs are always accessible
+    return this.getPublicUrl(key);
   }
 }
 

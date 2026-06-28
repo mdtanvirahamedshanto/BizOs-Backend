@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { storageService } from '@/services/storage.service';
 import { AuditService } from '@/services/audit.service';
-import { env } from '@/env';
+
 import { sendSuccess, sendCreated, sendNoContent } from '@/utils/response';
 import type { DeleteUploadDTO, PresignQueryDTO, UploadQueryDTO } from '@/validators/upload.schema';
 import { ConflictError } from '@/utils/errors';
@@ -80,7 +80,7 @@ export class UploadController {
     try {
       sendSuccess(res, {
         configured: storageService.isConfigured(),
-        bucket: storageService.isConfigured() ? env.STORAGE_BUCKET : null,
+        bucket: 'local-uploads',
       });
     } catch (err) {
       next(err);

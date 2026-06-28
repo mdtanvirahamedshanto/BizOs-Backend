@@ -59,13 +59,7 @@ const envSchema = z.object({
   // Uploads
   UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().min(1).max(50).default(5),
 
-  // File Storage
-  STORAGE_ENDPOINT: z.string().optional(),
-  STORAGE_ACCESS_KEY: z.string().optional(),
-  STORAGE_SECRET_KEY: z.string().optional(),
-  STORAGE_BUCKET: z.string().default('bizos-uploads'),
-  STORAGE_REGION: z.string().default('us-east-1'),
-  STORAGE_PUBLIC_BASE_URL: z.string().url().optional(),
+
 
   // API Docs
   ENABLE_SWAGGER: z.coerce.boolean().optional(),
@@ -121,15 +115,7 @@ function assertProductionEnv(data: z.infer<typeof envSchema>): void {
   if (data.JWT_REFRESH_SECRET.length < 32) {
     errors.push('JWT_REFRESH_SECRET must be at least 32 characters in production');
   }
-  if (!data.STORAGE_ENDPOINT) {
-    errors.push('STORAGE_ENDPOINT is required in production');
-  }
-  if (!data.STORAGE_ACCESS_KEY) {
-    errors.push('STORAGE_ACCESS_KEY is required in production');
-  }
-  if (!data.STORAGE_SECRET_KEY) {
-    errors.push('STORAGE_SECRET_KEY is required in production');
-  }
+
   if (data.ENABLE_SWAGGER === true) {
     errors.push('ENABLE_SWAGGER must be false in production');
   }
