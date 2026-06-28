@@ -5,13 +5,7 @@ import { logger } from '@/config/logger';
 import { prisma } from '@/prisma/client';
 import { closeAllQueues } from '@/config/bull';
 import { redis } from '@/config/redis';
-import { createSocketServer } from '@/config/socket';
-import { setSocketServer } from '@/config/socketInstance';
-import { registerSocketNamespaces } from '@/sockets/registerNamespaces';
-import { registerEventHandlers } from '@/events/eventHandlers';
-import { registerSocketBroadcaster } from '@/events/socketBroadcaster';
-
-const PORT = env.PORT || 3000;
+import { registerEventHandlers } from '@/events/eventHandlers';const PORT = env.PORT || 3000;
 
 async function bootstrap() {
   try {
@@ -22,11 +16,6 @@ async function bootstrap() {
 
     app.set('trust proxy', 1);
     const httpServer = createServer(app);
-    const io = createSocketServer(httpServer);
-    setSocketServer(io);
-    registerSocketNamespaces(io);
-    registerSocketBroadcaster(io);
-
     httpServer.listen(PORT, () => {
       logger.info(`Server is running in ${env.NODE_ENV} mode on port ${PORT}`);
     });
@@ -38,7 +27,6 @@ async function bootstrap() {
         logger.info('HTTP server closed.');
 
         try {
-          io.close();
           await closeAllQueues();
           await prisma.$disconnect();
           await redis.quit();

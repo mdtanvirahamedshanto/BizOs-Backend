@@ -208,8 +208,10 @@ async function main() {
   });
   console.log(`  ✓ Demo user seeded: ${user.name} (${user.email})`);
 
-  // Assign Owner role to user
+  // Assign Owner & SuperAdmin roles to demo user
   const ownerRole = seededRoles.find((r) => r.name === 'Owner')!;
+  const superAdminRole = seededRoles.find((r) => r.name === 'SuperAdmin')!;
+  
   await prisma.userRole.upsert({
     where: {
       userId_roleId: {
@@ -223,7 +225,22 @@ async function main() {
       roleId: ownerRole.id,
     },
   });
-  console.log('  ✓ Owner role assigned to demo user.');
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: user.id,
+        roleId: superAdminRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: user.id,
+      roleId: superAdminRole.id,
+    },
+  });
+  
+  console.log('  ✓ Owner and SuperAdmin roles assigned to demo user.');
 
   console.log('\n✅ BizOS database seeding complete!');
 }
