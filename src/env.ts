@@ -59,9 +59,10 @@ const envSchema = z.object({
   // Uploads
   UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().min(1).max(50).default(5),
 
-
-
-  // API Docs
+  // File Storage (Cloudinary)
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),  // API Docs
   ENABLE_SWAGGER: z.coerce.boolean().optional(),
 
   // Email
@@ -114,6 +115,10 @@ function assertProductionEnv(data: z.infer<typeof envSchema>): void {
   }
   if (data.JWT_REFRESH_SECRET.length < 32) {
     errors.push('JWT_REFRESH_SECRET must be at least 32 characters in production');
+  }
+
+  if (!data.CLOUDINARY_CLOUD_NAME || !data.CLOUDINARY_API_KEY || !data.CLOUDINARY_API_SECRET) {
+    errors.push('CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are required in production');
   }
 
   if (data.ENABLE_SWAGGER === true) {

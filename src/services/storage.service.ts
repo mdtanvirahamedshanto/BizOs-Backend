@@ -2,8 +2,7 @@ import { randomUUID } from 'crypto';
 import { env } from '@/env';
 import { ConflictError } from '@/utils/errors';
 import { createModuleLogger } from '@/config/logger';
-import path from 'path';
-import fs from 'fs/promises';
+import { v2 as cloudinary } from 'cloudinary';
 
 const log = createModuleLogger('storage');
 
@@ -26,11 +25,22 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
 ]);
 
-const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
-
 export class StorageService {
+  private configured = false;
+
+  constructor() {
+    if (env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET) {
+      cloudinary.config({
+        cloud_name: env.CLOUDINARY_CLOUD_NAME,
+        api_key: env.CLOUDINARY_API_KEY,
+        api_secret: env.CLOUDINARY_API_SECRET,
+      });
+      this.configured = true;
+    }
+  }
+
   isConfigured(): boolean {
-    return true; // Always configured for local storage
+    return this.configured;
   }
 
   validateMimeType(mimeType: string): void {
@@ -50,59 +60,65 @@ export class StorageService {
     }
   }
 
-  getPublicUrl(key: string): string {
-    const baseUrl = env.APP_URL.replace(/\/$/, '');
-    return `${baseUrl}/uploads/${key}`;
-  }
-
   async upload(
     shopId: string,
     file: Express.Multer.File,
     folder: UploadFolder,
   ): Promise<UploadedFile> {
+    if (!this.isConfigured()) {
+      throw new ConflictError('Cloudinary is not configured in this environment.');
+    }
+
     this.validateMimeType(file.mimetype);
-
     const key = this.buildObjectKey(shopId, folder, file.originalname);
-    const fullPath = path.join(UPLOADS_DIR, key);
-    
-    // Ensure directory exists
-    await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    
-    // Write file to disk
-    await fs.writeFile(fullPath, file.buffer);
 
-    log.info({ shopId, key, size: file.size, mimeType: file.mimetype }, 'File uploaded locally');
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          public_id: key,
+          resource_type: 'auto',
+        },
+        (error, result) => {
+          if (error || !result) {
+            log.error({ err: error }, 'Cloudinary upload failed');
+            return reject(new Error('Cloudinary upload failed'));
+          }
 
-    return {
-      key,
-      url: this.getPublicUrl(key),
-      bucket: 'local-uploads', // Kept for backwards compatibility
-      mimeType: file.mimetype,
-      size: file.size,
-      originalName: file.originalname,
-    };
+          log.info({ shopId, key, size: file.size, mimeType: file.mimetype }, 'File uploaded to Cloudinary');
+
+          resolve({
+            key: result.public_id,
+            url: result.secure_url,
+            bucket: 'cloudinary',
+            mimeType: file.mimetype,
+            size: file.size,
+            originalName: file.originalname,
+          });
+        }
+      );
+
+      uploadStream.end(file.buffer);
+    });
   }
 
   async delete(shopId: string, key: string): Promise<void> {
+    if (!this.isConfigured()) return;
     this.assertKeyBelongsToShop(shopId, key);
     
-    const fullPath = path.join(UPLOADS_DIR, key);
-    
     try {
-      await fs.unlink(fullPath);
-      log.info({ shopId, key }, 'File deleted locally');
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') {
-        throw err;
-      }
-      log.warn({ shopId, key }, 'File to delete was not found on disk');
+      await cloudinary.uploader.destroy(key);
+      log.info({ shopId, key }, 'File deleted from Cloudinary');
+    } catch (error) {
+      log.error({ err: error, shopId, key }, 'Failed to delete file from Cloudinary');
     }
   }
 
-  async getPresignedDownloadUrl(shopId: string, key: string, expiresIn = 3600): Promise<string> {
+  async getPresignedDownloadUrl(shopId: string, key: string, _expiresIn = 3600): Promise<string> {
     this.assertKeyBelongsToShop(shopId, key);
-    // For local storage, public URLs are always accessible
-    return this.getPublicUrl(key);
+    // Cloudinary URLs are public by default when returning secure_url.
+    // If you need signed URLs, cloudinary.url(key, { sign_url: true }) can be used.
+    // We'll just return the public URL for now.
+    return cloudinary.url(key, { secure: true });
   }
 }
 
