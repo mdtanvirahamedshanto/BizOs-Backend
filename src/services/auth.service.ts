@@ -40,7 +40,7 @@ export class AuthService {
     );
 
     // Permissions for the owner role
-    const permissions: string[] = ['*:*:*'];
+    const permissions: string[] = ['*'];
     const tokens = await this.generateTokens(user.id, shop.id, user.email, permissions);
 
     // Trigger events
@@ -65,6 +65,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         permissions,
+        role: 'Owner',
       },
       tokens,
     });
@@ -130,6 +131,11 @@ export class AuthService {
 
     log.info({ userId: user.id, shopId: effectiveShopId }, 'User logged in');
 
+    // Determine the highest priority role to return to frontend
+    const isSuperAdmin = user.userRoles.some((ur: any) => ur.role.name === 'SuperAdmin');
+    const isOwner = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
+    const primaryRole = isSuperAdmin ? 'SuperAdmin' : (isOwner ? 'Owner' : (user.userRoles[0]?.role.name || 'Cashier'));
+
     return success({
       user: {
         id: user.id,
@@ -137,6 +143,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         permissions: activePermissions,
+        role: primaryRole,
       },
       tokens,
     });
@@ -399,6 +406,11 @@ export class AuthService {
 
     log.info({ userId: user.id, shopId: dto.shopId }, 'User logged in via OTP');
 
+    // Determine primary role
+    const isSuperAdmin = user.userRoles.some((ur: any) => ur.role.name === 'SuperAdmin');
+    const isOwner = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
+    const primaryRole = isSuperAdmin ? 'SuperAdmin' : (isOwner ? 'Owner' : (user.userRoles[0]?.role.name || 'Cashier'));
+
     return success({
       user: {
         id: user.id,
@@ -406,6 +418,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         permissions: activePermissions,
+        role: primaryRole,
       },
       tokens,
     });
@@ -427,12 +440,17 @@ export class AuthService {
     );
     const activePermissions = hasOwnerOrSuperAdmin ? ['*'] : permissions;
 
+    const isSuperAdmin = user.userRoles.some((ur: any) => ur.role.name === 'SuperAdmin');
+    const isOwner = user.userRoles.some((ur: any) => ur.role.name === 'Owner');
+    const primaryRole = isSuperAdmin ? 'SuperAdmin' : (isOwner ? 'Owner' : (user.userRoles[0]?.role.name || 'Cashier'));
+
     return success({
       id: user.id,
       shopId: user.shopId,
       email: user.email,
       name: user.name,
       permissions: activePermissions,
+      role: primaryRole,
     });
   }
 

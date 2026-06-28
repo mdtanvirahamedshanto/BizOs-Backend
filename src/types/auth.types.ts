@@ -15,6 +15,7 @@ export interface AuthUser {
   email: string;
   name: string;
   permissions: string[];
+  role: string;
 }
 
 export interface AuthResult {
