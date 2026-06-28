@@ -112,6 +112,11 @@ export class AuthRepository {
       // Fetch all global permissions to map to Manager and Staff
       const permissions = await tx.permission.findMany();
 
+      const ownerPermissionsData = permissions.map(perm => ({
+        roleId: ownerRole.id,
+        permissionId: perm.id,
+      }));
+
       const managerPermissionsData = permissions.map(perm => ({
         roleId: managerRole.id,
         permissionId: perm.id,
@@ -130,7 +135,7 @@ export class AuthRepository {
         }));
 
       await tx.rolePermission.createMany({
-        data: [...managerPermissionsData, ...staffPermissionsData],
+        data: [...ownerPermissionsData, ...managerPermissionsData, ...staffPermissionsData],
         skipDuplicates: true,
       });
 
