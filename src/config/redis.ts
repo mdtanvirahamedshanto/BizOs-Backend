@@ -6,11 +6,7 @@ import { logger } from './logger';
  * Redis client singleton.
  * Used for caching, session storage, rate limiting, and Socket.IO adapter.
  */
-export const redis = new Redis({
-  host: env.REDIS_HOST,
-  port: env.REDIS_PORT,
-  password: env.REDIS_PASSWORD || undefined,
-  db: env.REDIS_DB,
+const redisOptions = {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   lazyConnect: false,
@@ -19,7 +15,22 @@ export const redis = new Redis({
     logger.warn({ attempt: times, delay }, 'Redis connection retry');
     return delay;
   },
-});
+};
+
+export const redis = env.REDIS_URL
+  ? new Redis(env.REDIS_URL, {
+      ...redisOptions,
+      // For Upstash 'rediss://' URLs we usually don't need additional config,
+      // but family: 0 ensures we resolve IPv4/IPv6 automatically
+      family: 0
+    })
+  : new Redis({
+      host: env.REDIS_HOST,
+      port: env.REDIS_PORT,
+      password: env.REDIS_PASSWORD || undefined,
+      db: env.REDIS_DB,
+      ...redisOptions,
+    });
 
 redis.on('connect', () => {
   logger.info('Redis connected');
@@ -39,13 +50,15 @@ redis.on('close', () => {
  * and for BullMQ (needs separate connections per worker).
  */
 export function createRedisConnection(): Redis {
-  return new Redis({
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    password: env.REDIS_PASSWORD || undefined,
-    db: env.REDIS_DB,
-    maxRetriesPerRequest: null,
-  });
+  return env.REDIS_URL
+    ? new Redis(env.REDIS_URL, { maxRetriesPerRequest: null, family: 0 })
+    : new Redis({
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD || undefined,
+        db: env.REDIS_DB,
+        maxRetriesPerRequest: null,
+      });
 }
 
 export default redis;
