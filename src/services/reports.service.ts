@@ -452,6 +452,7 @@ export class ReportsService {
     const [
       currentMetrics,
       previousMetrics,
+      totalLifetimeExpensesCents,
       currentSales,
       currentExpenses,
       recentSales,
@@ -463,6 +464,7 @@ export class ReportsService {
     ] = await Promise.all([
       this.computeSalesMetrics(shopId, startDate, endDate),
       this.computeSalesMetrics(shopId, previousPeriod.startDate, previousPeriod.endDate),
+      this.reportsRepo.getExpenseTotalCents(shopId), // No date bounds -> lifetime
       this.reportsRepo.getSalesData(shopId, startDate, endDate),
       this.reportsRepo.getExpensesData(shopId, startDate, endDate),
       this.reportsRepo.getRecentSales(shopId, 5),
@@ -483,7 +485,9 @@ export class ReportsService {
     const saleCount = buildKpi(currentMetrics.saleCount, previousMetrics.saleCount);
     const grossProfit = buildKpi(currentMetrics.grossProfitCents, previousMetrics.grossProfitCents);
     const netProfit = buildKpi(currentMetrics.netProfitCents, previousMetrics.netProfitCents);
-    const expenses = buildKpi(currentMetrics.expenseCents, previousMetrics.expenseCents);
+    
+    // For expenses, use lifetime for current, previous is not applicable for lifetime
+    const expenses = { current: totalLifetimeExpensesCents, previous: 0, changePercent: 0 };
 
     const grossMarginPercent =
       currentMetrics.revenueCents > 0
