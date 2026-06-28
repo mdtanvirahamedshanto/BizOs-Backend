@@ -12,7 +12,7 @@ export const updateFlexiloadAccountSchema = flexiloadAccountSchema.partial();
 
 export const flexiloadTransactionSchema = z.object({
   accountId: z.string().uuid('Invalid Flexiload Account ID'),
-  recipientPhone: z.string().regex(bdPhoneRegex, 'Invalid recipient mobile number format'),
+  recipientPhone: z.string().regex(bdPhoneRegex, 'Invalid recipient mobile number format').or(z.literal('')),
   amountCents: z.number().int().positive('Recharge amount must be positive'),
   commissionCents: z.number().int().nonnegative('Recharge commission cannot be negative').optional().default(0),
   status: z.enum(['PENDING', 'COMPLETED', 'FAILED']).optional().default('COMPLETED'),

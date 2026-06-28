@@ -76,6 +76,14 @@ export class SalesRepository {
       include: {
         customer: true,
         cashier: { select: { name: true } },
+        items: {
+          select: {
+            productName: true,
+            quantity: true,
+            unitPriceCents: true,
+            totalCents: true,
+          }
+        },
       },
     };
 
