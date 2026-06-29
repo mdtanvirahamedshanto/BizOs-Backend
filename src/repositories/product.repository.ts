@@ -29,18 +29,22 @@ export class ProductRepository {
     });
   }
 
-  async updateCategory(_shopId: string, id: string, data: any) {
-    return this.prisma.category.update({
-      where: { id },
+  async updateCategory(shopId: string, id: string, data: any) {
+    const { count } = await this.prisma.category.updateMany({
+      where: { id, shopId },
       data,
     });
+    if (count === 0) throw new NotFoundError('Category');
+    return this.prisma.category.findFirst({ where: { id, shopId } });
   }
 
-  async softDeleteCategory(_shopId: string, id: string) {
-    return this.prisma.category.update({
-      where: { id },
+  async softDeleteCategory(shopId: string, id: string) {
+    const { count } = await this.prisma.category.updateMany({
+      where: { id, shopId },
       data: { deletedAt: new Date() },
     });
+    if (count === 0) throw new NotFoundError('Category');
+    return this.prisma.category.findFirst({ where: { id, shopId } });
   }
 
   async findCategories(
@@ -122,18 +126,22 @@ export class ProductRepository {
     });
   }
 
-  async updateProduct(_shopId: string, id: string, data: any) {
-    return this.prisma.product.update({
-      where: { id },
+  async updateProduct(shopId: string, id: string, data: any) {
+    const { count } = await this.prisma.product.updateMany({
+      where: { id, shopId },
       data,
     });
+    if (count === 0) throw new NotFoundError('Product');
+    return this.prisma.product.findFirst({ where: { id, shopId }, include: { category: true } });
   }
 
-  async softDeleteProduct(_shopId: string, id: string) {
-    return this.prisma.product.update({
-      where: { id },
+  async softDeleteProduct(shopId: string, id: string) {
+    const { count } = await this.prisma.product.updateMany({
+      where: { id, shopId },
       data: { deletedAt: new Date() },
     });
+    if (count === 0) throw new NotFoundError('Product');
+    return this.prisma.product.findFirst({ where: { id, shopId } });
   }
 
   async findProducts(

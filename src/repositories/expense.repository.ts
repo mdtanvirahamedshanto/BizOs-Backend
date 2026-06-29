@@ -46,21 +46,21 @@ export class ExpenseRepository {
       }
     }
 
-    return this.prisma.expenseCategory.update({
-      where: { id },
+    const { count } = await this.prisma.expenseCategory.updateMany({
+      where: { id, shopId },
       data,
     });
+    if (count === 0) throw new NotFoundError('Expense Category');
+    return this.prisma.expenseCategory.findFirst({ where: { id, shopId } });
   }
 
   async softDeleteCategory(shopId: string, id: string) {
-    const category = await this.findCategoryById(shopId, id);
-    if (!category) {
-      throw new NotFoundError('Expense Category');
-    }
-    return this.prisma.expenseCategory.update({
-      where: { id },
+    const { count } = await this.prisma.expenseCategory.updateMany({
+      where: { id, shopId },
       data: { deletedAt: new Date() },
     });
+    if (count === 0) throw new NotFoundError('Expense Category');
+    return this.prisma.expenseCategory.findFirst({ where: { id, shopId } });
   }
 
   async findCategoryById(shopId: string, id: string) {
@@ -183,14 +183,19 @@ export class ExpenseRepository {
         const absoluteDiff = Math.abs(diff);
 
         // Update expense
-        const updated = await tx.expense.update({
-          where: { id },
+        await tx.expense.updateMany({
+          where: { id, shopId },
           data,
+        });
+        const updated = await tx.expense.findFirst({
+          where: { id, shopId },
           include: {
             category: { select: { name: true } },
             recorder: { select: { name: true } },
           },
         });
+        
+        if (!updated) throw new NotFoundError('Expense');
 
         // Record adjustment
         await CashbookRepository.recordEntry(tx, shopId, {
@@ -206,9 +211,12 @@ export class ExpenseRepository {
       });
     }
 
-    return this.prisma.expense.update({
-      where: { id },
+    await this.prisma.expense.updateMany({
+      where: { id, shopId },
       data,
+    });
+    return this.prisma.expense.findFirst({
+      where: { id, shopId },
       include: {
         category: { select: { name: true } },
         recorder: { select: { name: true } },
@@ -226,10 +234,11 @@ export class ExpenseRepository {
         throw new NotFoundError('Expense');
       }
 
-      const deleted = await tx.expense.update({
-        where: { id },
+      const { count } = await tx.expense.updateMany({
+        where: { id, shopId },
         data: { deletedAt: new Date() },
       });
+      if (count === 0) throw new NotFoundError('Expense');
 
       // Reverse cashbook entry if paymentMethod was CASH
       if (expense.paymentMethod === 'CASH') {
@@ -243,7 +252,7 @@ export class ExpenseRepository {
         });
       }
 
-      return deleted;
+      return tx.expense.findFirst({ where: { id, shopId } });
     });
   }
 
@@ -405,9 +414,13 @@ export class ExpenseRepository {
       }
     }
 
-    return this.prisma.recurringExpense.update({
-      where: { id },
+    const { count } = await this.prisma.recurringExpense.updateMany({
+      where: { id, shopId },
       data,
+    });
+    if (count === 0) throw new NotFoundError('Recurring Expense');
+    return this.prisma.recurringExpense.findFirst({
+      where: { id, shopId },
       include: {
         category: { select: { name: true } },
         recorder: { select: { name: true } },

@@ -47,18 +47,22 @@ export class CustomerRepository {
     });
   }
 
-  async update(_shopId: string, id: string, data: any) {
-    return this.prisma.customer.update({
-      where: { id },
+  async update(shopId: string, id: string, data: any) {
+    const { count } = await this.prisma.customer.updateMany({
+      where: { id, shopId },
       data,
     });
+    if (count === 0) throw new Error('Customer not found');
+    return this.prisma.customer.findFirst({ where: { id, shopId } });
   }
 
-  async softDelete(_shopId: string, id: string) {
-    return this.prisma.customer.update({
-      where: { id },
+  async softDelete(shopId: string, id: string) {
+    const { count } = await this.prisma.customer.updateMany({
+      where: { id, shopId },
       data: { deletedAt: new Date() },
     });
+    if (count === 0) throw new Error('Customer not found');
+    return this.prisma.customer.findFirst({ where: { id, shopId } });
   }
 
   async findAndCount(

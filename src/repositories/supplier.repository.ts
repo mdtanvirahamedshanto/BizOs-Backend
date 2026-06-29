@@ -24,18 +24,22 @@ export class SupplierRepository {
     });
   }
 
-  async update(_shopId: string, id: string, data: any) {
-    return this.prisma.supplier.update({
-      where: { id },
+  async update(shopId: string, id: string, data: any) {
+    const { count } = await this.prisma.supplier.updateMany({
+      where: { id, shopId },
       data,
     });
+    if (count === 0) throw new Error('Supplier not found');
+    return this.prisma.supplier.findFirst({ where: { id, shopId } });
   }
 
-  async softDelete(_shopId: string, id: string) {
-    return this.prisma.supplier.update({
-      where: { id },
+  async softDelete(shopId: string, id: string) {
+    const { count } = await this.prisma.supplier.updateMany({
+      where: { id, shopId },
       data: { deletedAt: new Date() },
     });
+    if (count === 0) throw new Error('Supplier not found');
+    return this.prisma.supplier.findFirst({ where: { id, shopId } });
   }
 
   async findAndCount(
