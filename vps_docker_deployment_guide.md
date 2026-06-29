@@ -83,7 +83,7 @@ Run the following command to build the production images and start all container
 
 ```bash
 # Load the environment variables from the file and run docker compose
-docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production up -d --build
 ```
 
 ## Step 6: Verify Deployment

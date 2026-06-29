@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
     # Removed ports mapping to avoid conflicting with the VPS's host Redis (port 6379).
     # Other containers can still reach this redis internally on port 6379.
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-redis_secret}
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--requirepass", "${REDIS_PASSWORD:-redis_secret}"]
     volumes:
       - redis_data:/data
     healthcheck:
