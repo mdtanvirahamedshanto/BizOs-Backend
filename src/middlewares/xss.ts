@@ -1,16 +1,16 @@
 import type { Request, Response, NextFunction } from 'express';
 
+import sanitizeHtml from 'sanitize-html';
+
 /**
  * Clean string of script tags, inline event handlers, and javascript: protocols.
  */
 function cleanXss(val: any): any {
   if (typeof val === 'string') {
-    return val
-      .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '') // Remove <script> blocks
-      .replace(/on\w+\s*=\s*"[^"]*"/gi, '') // Remove onload="..."
-      .replace(/on\w+\s*=\s*'[^']*'/gi, '')
-      .replace(/on\w+\s*=\s*\S+/gi, '')
-      .replace(/javascript:\s*[^"'\s>]+/gi, ''); // Remove javascript:...
+    return sanitizeHtml(val, {
+      allowedTags: [],
+      allowedAttributes: {}
+    });
   }
 
   if (Array.isArray(val)) {

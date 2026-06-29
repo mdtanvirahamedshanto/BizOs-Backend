@@ -23,6 +23,7 @@ RUN apk add --no-cache openssl dumb-init \
   && addgroup -S bizos && adduser -S bizos -G bizos
 
 ENV NODE_ENV=production
+ENV UV_THREADPOOL_SIZE=4
 
 COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
@@ -48,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["dumb-init", "--", "docker-entrypoint.sh"]
-CMD ["node", "dist/server.js"]
+CMD ["node", "--max-old-space-size=768", "dist/server.js"]

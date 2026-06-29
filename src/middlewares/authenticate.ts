@@ -24,7 +24,7 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
       throw new UnauthorizedError('Missing or invalid authorization token');
     }
 
-    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
+    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ['HS256'] }) as any;
     const shopId = decoded.shopId || decoded.tenantId;
 
     req.user = {

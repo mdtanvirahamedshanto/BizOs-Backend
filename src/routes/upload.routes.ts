@@ -23,7 +23,7 @@ router.post(
   '/',
   authorize('uploads.write'),
   validate(uploadQuerySchema, 'query'),
-  uploadMiddleware.single('file'),
+  ...uploadMiddleware,
   uploadController.uploadFile,
 );
 router.delete('/', authorize('uploads.write'), validate(deleteUploadSchema), uploadController.deleteFile);

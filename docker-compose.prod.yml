@@ -10,6 +10,7 @@ services:
       ENABLE_SWAGGER: 'false'
       LOG_LEVEL: warn
       RATE_LIMIT_MAX_REQUESTS: 200
+      # Ensure DATABASE_URL includes ?connection_limit=5&pool_timeout=10 for low-resource environments
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REDIS_HOST: redis
       REDIS_PORT: 6379
