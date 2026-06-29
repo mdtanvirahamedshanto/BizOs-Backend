@@ -30,6 +30,8 @@ export const corsOptions: CorsOptions = {
     'X-Tenant-ID',
     'X-Idempotency-Key',
     'X-CSRF-Token',
+    'X-Branch-Id',
+    'X-Business-Id',
   ],
   exposedHeaders: ['X-Request-ID', 'X-Total-Count'],
   maxAge: 86400, // 24 hours preflight cache
