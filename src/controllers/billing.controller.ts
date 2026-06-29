@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { BillingService } from '../services/billing.service';
 import { sendSuccess } from '../utils/response';
 
