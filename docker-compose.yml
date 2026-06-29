@@ -98,9 +98,11 @@ services:
       STORAGE_BUCKET: bizos-uploads
       STORAGE_REGION: us-east-1
       STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL:-http://localhost:9000/bizos-uploads}
-      ENABLE_SWAGGER: 'false'
       LOG_LEVEL: warn
       RATE_LIMIT_MAX_REQUESTS: 200
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
     ports:
       - '4000:3000'
     deploy:
@@ -136,6 +138,9 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-min-32-chars-long!!}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-min-32-chars-long!}
       LOG_LEVEL: warn
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
     deploy:
       resources:
         limits:
