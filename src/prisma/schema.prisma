@@ -169,6 +169,7 @@ model Shop {
   flexiloadAccounts      FlexiloadAccount[]
   flexiloadTransactions  FlexiloadTransaction[]
   tenantSubscriptions    TenantSubscription[]
+  subscriptionRequests   SubscriptionRequest[]
 
   @@map("shops")
 }
@@ -1182,6 +1183,7 @@ model SubscriptionPlan {
   updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamptz
 
   subscriptions        TenantSubscription[]
+  subscriptionRequests SubscriptionRequest[]
 
   @@map("subscription_plans")
 }
@@ -1200,4 +1202,24 @@ model TenantSubscription {
   plan             SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   @@map("tenant_subscriptions")
+}
+
+model SubscriptionRequest {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shopId          String   @map("shop_id") @db.Uuid
+  planId          String   @map("plan_id") @db.VarChar(50)
+  billingCycle    String   @default("monthly") @db.VarChar(20)
+  paymentMethod   String   @map("payment_method") @db.VarChar(50) // bkash, nagad, bank
+  transactionId   String   @map("transaction_id") @db.VarChar(100)
+  senderAccount   String?  @map("sender_account") @db.VarChar(50)
+  amountCents     Int      @map("amount_cents")
+  status          String   @default("pending") @db.VarChar(20) // pending, approved, rejected
+  notes           String?
+  requestedAt     DateTime @default(now()) @map("requested_at") @db.Timestamptz
+  processedAt     DateTime? @map("processed_at") @db.Timestamptz
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@map("subscription_requests")
 }

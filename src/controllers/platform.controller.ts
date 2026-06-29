@@ -156,4 +156,33 @@ export class PlatformController {
       next(err);
     }
   };
+
+  getSubscriptionRequests = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.platformService.getSubscriptionRequests();
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  approveSubscriptionRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const data = await this.platformService.approveSubscriptionRequest(id);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  rejectSubscriptionRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const id = req.params.id as string;
+      const data = await this.platformService.rejectSubscriptionRequest(id);
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

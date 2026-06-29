@@ -10,11 +10,18 @@ export class BillingService {
       orderBy: { createdAt: 'desc' }
     });
 
+    const pendingRequest = await prisma.subscriptionRequest.findFirst({
+      where: { shopId, status: 'pending' },
+      include: { plan: true },
+      orderBy: { requestedAt: 'desc' }
+    });
+
     const shop = await prisma.shop.findUnique({ where: { id: shopId } });
     if (!shop) throw new NotFoundError('Shop not found');
 
     return {
       activeSubscription: activeSub,
+      pendingRequest,
       currentPlanEnum: shop.plan,
     };
   }
@@ -72,5 +79,34 @@ export class BillingService {
     });
 
     return { success: true };
+  }
+
+  async manualSubscribe(data: {
+    shopId: string;
+    planId: string;
+    billingCycle: 'monthly' | 'yearly';
+    paymentMethod: string;
+    transactionId: string;
+    senderAccount?: string;
+  }) {
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { id: data.planId } });
+    if (!plan) throw new NotFoundError('Plan not found');
+
+    const amountCents = data.billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly;
+
+    const request = await prisma.subscriptionRequest.create({
+      data: {
+        shopId: data.shopId,
+        planId: data.planId,
+        billingCycle: data.billingCycle,
+        paymentMethod: data.paymentMethod,
+        transactionId: data.transactionId,
+        senderAccount: data.senderAccount,
+        amountCents,
+        status: 'pending'
+      }
+    });
+
+    return request;
   }
 }

@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.get('/current', billingController.getCurrentSubscription);
 router.post('/subscribe', billingController.subscribe);
+router.post('/manual-subscribe', billingController.manualSubscribe);
 router.post('/cancel', billingController.cancelSubscription);
 
 export const billingRoutes = router;

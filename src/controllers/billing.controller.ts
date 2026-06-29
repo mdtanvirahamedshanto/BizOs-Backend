@@ -35,4 +35,22 @@ export class BillingController {
       next(err);
     }
   };
+
+  manualSubscribe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const shopId = req.user!.shopId;
+      const { planId, billingCycle, paymentMethod, transactionId, senderAccount } = req.body;
+      const data = await this.billingService.manualSubscribe({
+        shopId,
+        planId,
+        billingCycle,
+        paymentMethod,
+        transactionId,
+        senderAccount
+      });
+      sendSuccess(res, data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }

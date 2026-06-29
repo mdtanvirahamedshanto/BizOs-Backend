@@ -559,4 +559,62 @@ export class PlatformService {
       data
     });
   }
+
+  async getSubscriptionRequests() {
+    return prisma.subscriptionRequest.findMany({
+      where: { status: 'pending' },
+      include: { shop: true, plan: true },
+      orderBy: { requestedAt: 'desc' }
+    });
+  }
+
+  async approveSubscriptionRequest(id: string) {
+    const request = await prisma.subscriptionRequest.findUnique({ where: { id } });
+    if (!request || request.status !== 'pending') throw new NotFoundError('Request not found or not pending');
+
+    // End current active subscriptions
+    await prisma.tenantSubscription.updateMany({
+      where: { shopId: request.shopId, status: 'active' },
+      data: { status: 'cancelled', endDate: new Date() }
+    });
+
+    // Create new subscription
+    const endDate = new Date();
+    if (request.billingCycle === 'yearly') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    await prisma.tenantSubscription.create({
+      data: {
+        shopId: request.shopId,
+        planId: request.planId,
+        status: 'active',
+        startDate: new Date(),
+        endDate,
+      }
+    });
+
+    let planEnum: any = 'FREE';
+    if (request.planId === 'basic') planEnum = 'STARTER';
+    if (request.planId === 'premium') planEnum = 'PROFESSIONAL';
+
+    await prisma.shop.update({
+      where: { id: request.shopId },
+      data: { plan: planEnum }
+    });
+
+    return prisma.subscriptionRequest.update({
+      where: { id },
+      data: { status: 'approved', processedAt: new Date() }
+    });
+  }
+
+  async rejectSubscriptionRequest(id: string) {
+    return prisma.subscriptionRequest.update({
+      where: { id },
+      data: { status: 'rejected', processedAt: new Date() }
+    });
+  }
 }

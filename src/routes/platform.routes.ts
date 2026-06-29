@@ -33,4 +33,8 @@ router.get('/monitoring', platformController.getMonitoringStats);
 router.get('/plans', platformController.getPlans);
 router.put('/plans/:id', platformController.updatePlan);
 
+router.get('/subscription-requests', platformController.getSubscriptionRequests);
+router.post('/subscription-requests/:id/approve', platformController.approveSubscriptionRequest);
+router.post('/subscription-requests/:id/reject', platformController.rejectSubscriptionRequest);
+
 export const platformRoutes = router;
