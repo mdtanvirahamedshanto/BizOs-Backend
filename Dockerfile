@@ -11,7 +11,7 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 COPY tsconfig.json prisma.config.ts ./
 COPY src ./src
 
-RUN npx prisma generate --schema=src/prisma/schema.prisma
+RUN DATABASE_URL="postgresql://dummy" npx prisma generate --schema=src/prisma/schema.prisma
 RUN npm run build
 
 # ─── Stage 2: Production runtime ────────────────────────────
@@ -38,7 +38,7 @@ COPY prisma.config.ts ./
 COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
-  && npx prisma generate --schema=src/prisma/schema.prisma \
+  && DATABASE_URL="postgresql://dummy" npx prisma generate --schema=src/prisma/schema.prisma \
   && chown -R bizos:bizos /app
 
 USER bizos
