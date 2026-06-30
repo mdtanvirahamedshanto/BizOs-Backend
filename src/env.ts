@@ -38,12 +38,12 @@ const envSchema = z.object({
   // JWT
   JWT_ACCESS_SECRET: z.string().min(16),
   JWT_REFRESH_SECRET: z.string().min(16),
-  JWT_ACCESS_EXPIRY: z.string().default('15m'),
-  JWT_REFRESH_EXPIRY: z.string().default('7d'),
+  JWT_ACCESS_EXPIRY: z.string().default('7d'),
+  JWT_REFRESH_EXPIRY: z.string().default('30d'),
 
   // Rate Limiting
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900_000), // 15 minutes
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000), // 1 minute
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(500),
 
   // Request limits
   JSON_BODY_LIMIT: z.string().default('1mb'),
