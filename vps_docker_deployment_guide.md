@@ -168,3 +168,5 @@ docker rm $(docker ps -aq)
 # সব ডকার ইমেজ ও ভলিউম মুছে ফেলা (যাতে স্টোরেজ ফাকা হয়)
 docker rmi -f $(docker images -aq)
 docker volume rm $(docker volume ls -q)
+
+docker exec -it bizos-api node dist/prisma/seed.js
