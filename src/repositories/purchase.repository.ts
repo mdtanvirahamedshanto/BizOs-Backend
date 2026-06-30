@@ -60,6 +60,7 @@ export class PurchaseRepository {
       include: {
         supplier: true,
         buyer: { select: { name: true } },
+        items: true,
       },
     };
 
