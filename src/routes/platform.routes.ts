@@ -8,6 +8,9 @@ const router = Router();
 const platformService = new PlatformService();
 const platformController = new PlatformController(platformService);
 
+// Public Routes
+router.get('/plans', platformController.getPlans);
+
 // Cross-tenant control plane: authenticate then require platform-admin.
 // Intentionally NO tenantContext — these endpoints span all shops.
 router.use(authenticate);
@@ -30,7 +33,6 @@ router.post('/tickets/:id/resolve', platformController.resolveTicket);
 router.get('/flags', platformController.getFlags);
 router.post('/flags/:key', platformController.toggleFlag);
 router.get('/monitoring', platformController.getMonitoringStats);
-router.get('/plans', platformController.getPlans);
 router.put('/plans/:id', platformController.updatePlan);
 
 router.get('/subscription-requests', platformController.getSubscriptionRequests);
