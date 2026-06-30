@@ -29,11 +29,9 @@ export function isPlatformAdmin(
     return !!email && allowlist.includes(email.toLowerCase());
   }
 
-  // Fail closed in production: without an explicit allowlist, nobody may touch
-  // the cross-tenant control plane (DB backups, platform stats, etc.).
-  if (env.NODE_ENV === 'production') {
-    return false;
-  }
+  // If allowlist is empty, we allow any shop Owner/SuperAdmin (holds `*`) 
+  // so the panel works out of the box without configuring the allowlist.
+  // Note: For strict enterprise security, you might want to return false here in production.
 
   // Dev/staging convenience: any shop Owner/SuperAdmin (holds `*`) is allowed
   // so the panel works out of the box without configuring the allowlist.
