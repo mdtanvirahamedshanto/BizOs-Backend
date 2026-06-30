@@ -112,6 +112,22 @@ export class ReportsRepository {
     return result._sum.amountCents ?? 0;
   }
 
+  async getPurchaseTotalCents(shopId: string, startDate?: Date, endDate?: Date): Promise<number> {
+    const purchaseDate = this.salesDateFilter(startDate, endDate);
+
+    const result = await this.prisma.purchase.aggregate({
+      where: {
+        shopId,
+        deletedAt: null,
+        status: { in: ['ORDERED', 'RECEIVED'] },
+        ...(purchaseDate && { purchaseDate: purchaseDate as any }), // date filter uses purchaseDate
+      },
+      _sum: { totalCents: true },
+    });
+
+    return result._sum.totalCents ?? 0;
+  }
+
   /** @deprecated Prefer getCOGSCents for aggregate COGS — loads all line items into memory. */
   async getCOGSData(shopId: string, startDate?: Date, endDate?: Date) {
     const saleDate = this.salesDateFilter(startDate, endDate);
@@ -154,6 +170,26 @@ export class ReportsRepository {
         },
       },
       orderBy: { expenseDate: 'asc' },
+    });
+  }
+
+  async getPurchasesData(shopId: string, startDate?: Date, endDate?: Date) {
+    const purchaseDate = this.salesDateFilter(startDate, endDate);
+
+    return this.prisma.purchase.findMany({
+      where: {
+        shopId,
+        deletedAt: null,
+        status: { in: ['ORDERED', 'RECEIVED'] },
+        ...(purchaseDate && { purchaseDate: purchaseDate as any }),
+      },
+      select: {
+        id: true,
+        referenceNumber: true,
+        totalCents: true,
+        purchaseDate: true,
+      },
+      orderBy: { purchaseDate: 'asc' },
     });
   }
 

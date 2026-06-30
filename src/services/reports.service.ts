@@ -148,11 +148,14 @@ export class ReportsService {
     startDate: Date,
     endDate: Date,
   ): Promise<SalesMetrics> {
-    const [salesAgg, cogsCents, expenseCents] = await Promise.all([
+    const [salesAgg, cogsCents, rawExpenseCents, purchaseCents] = await Promise.all([
       this.reportsRepo.getSalesAggregates(shopId, startDate, endDate),
       this.reportsRepo.getCOGSCents(shopId, startDate, endDate),
       this.reportsRepo.getExpenseTotalCents(shopId, startDate, endDate),
+      this.reportsRepo.getPurchaseTotalCents(shopId, startDate, endDate),
     ]);
+
+    const expenseCents = rawExpenseCents + purchaseCents;
 
     const { revenueCents, taxCents, discountCents, saleCount } = salesAgg;
     const grossProfitCents = revenueCents - taxCents - cogsCents;
@@ -452,9 +455,11 @@ export class ReportsService {
     const [
       currentMetrics,
       previousMetrics,
-      totalLifetimeExpensesCents,
+      rawLifetimeExpensesCents,
+      lifetimePurchasesCents,
       currentSales,
       currentExpenses,
+      currentPurchases,
       recentSales,
       recentPayments,
       recentExpenses,
@@ -465,8 +470,10 @@ export class ReportsService {
       this.computeSalesMetrics(shopId, startDate, endDate),
       this.computeSalesMetrics(shopId, previousPeriod.startDate, previousPeriod.endDate),
       this.reportsRepo.getExpenseTotalCents(shopId), // No date bounds -> lifetime
+      this.reportsRepo.getPurchaseTotalCents(shopId), // No date bounds -> lifetime
       this.reportsRepo.getSalesData(shopId, startDate, endDate),
       this.reportsRepo.getExpensesData(shopId, startDate, endDate),
+      this.reportsRepo.getPurchasesData(shopId, startDate, endDate),
       this.reportsRepo.getRecentSales(shopId, 5),
       this.reportsRepo.getRecentPayments(shopId, 5),
       this.reportsRepo.getRecentExpenses(shopId, 5),
@@ -474,6 +481,8 @@ export class ReportsService {
       this.reportsRepo.getMfsBalance(shopId),
       this.reportsRepo.getFlexiloadBalance(shopId),
     ]);
+
+    const totalLifetimeExpensesCents = rawLifetimeExpensesCents + lifetimePurchasesCents;
 
     const buildKpi = (current: number, previous: number): KpiWithChange => ({
       current,
@@ -539,6 +548,17 @@ export class ReportsService {
       };
       existing.amountCents += expense.amountCents;
       expenseByCategory.set(key, existing);
+    }
+
+    // Add purchases as a pseudo-category
+    if (currentPurchases.length > 0) {
+      const purchaseAmount = currentPurchases.reduce((acc, p) => acc + p.totalCents, 0);
+      expenseByCategory.set('purchases', {
+        categoryId: 'purchases',
+        categoryName: 'Purchase Orders (Cost of Stock)',
+        color: '#6366f1', // Indigo color for purchases
+        amountCents: purchaseAmount,
+      });
     }
 
     return {
