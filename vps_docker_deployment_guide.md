@@ -170,3 +170,41 @@ docker rmi -f $(docker images -aq)
 docker volume rm $(docker volume ls -q)
 
 docker exec -it bizos-api node dist/prisma/seed.js
+
+## 🔄 How to Update the Application (Pushing New Code)
+
+Whenever you write new code on your local machine and push it to GitHub, you need to pull those changes and rebuild the containers on your VPS.
+
+### Updating the Backend (API & Worker)
+1. Go to the backend directory on your VPS:
+   ```bash
+   cd /opt/bizos/backend
+   ```
+2. Pull the latest code from GitHub:
+   ```bash
+   git pull
+   ```
+3. Rebuild and restart the containers with the new code:
+   ```bash
+   docker compose --env-file .env.production up -d --build
+   ```
+4. **(Optional)** If you made any changes to the Prisma schema (`schema.prisma`), you need to apply the migrations to the live database:
+   ```bash
+   docker exec -it bizos-api npx prisma migrate deploy
+   ```
+
+### Updating the Frontend (Next.js UI)
+1. Go to the frontend directory on your VPS:
+   ```bash
+   cd /opt/bizos/frontend
+   ```
+2. Pull the latest code from GitHub:
+   ```bash
+   git pull
+   ```
+3. Rebuild and restart the frontend container:
+   ```bash
+   docker compose up -d --build
+   ```
+
+> **Pro Tip:** Using the `--build` flag ensures Docker reads your latest code changes and creates a fresh image. If you just run `up -d` without `--build`, Docker might use the old cached code!
