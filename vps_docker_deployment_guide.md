@@ -154,3 +154,17 @@ certbot --nginx -d api.yourdomain.com
 > **Database Migrations**
 > Once the containers are running, you need to migrate the database schema. Run this command on the VPS:
 > `docker exec -it bizos-api npx prisma migrate deploy`
+
+
+
+
+# BizOS-এর কন্টেইনার ও ভলিউম স্টপ করা
+docker compose down -v
+
+# সার্ভারে থাকা সব ডকার কন্টেইনার স্টপ ও ডিলিট করা
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)
+
+# সব ডকার ইমেজ ও ভলিউম মুছে ফেলা (যাতে স্টোরেজ ফাকা হয়)
+docker rmi -f $(docker images -aq)
+docker volume rm $(docker volume ls -q)
