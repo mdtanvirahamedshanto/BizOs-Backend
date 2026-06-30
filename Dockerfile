@@ -19,7 +19,7 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-RUN apk add --no-cache openssl dumb-init \
+RUN apk add --no-cache openssl dumb-init postgresql-client \
   && addgroup -S bizos && adduser -S bizos -G bizos
 
 ENV NODE_ENV=production
