@@ -81,7 +81,13 @@ export function errorHandler(
 
   // Handle unexpected errors
   logger.error(
-    { err: activeError, requestId: req.requestId, path: req.path, method: req.method },
+    { 
+      errMessage: activeError.message, 
+      errStack: activeError.stack, 
+      requestId: req.requestId, 
+      path: req.path, 
+      method: req.method 
+    },
     'Unhandled error',
   );
 
